@@ -25,8 +25,10 @@ La placa no necesita cables ni protoboard: todo viene integrado. Los pines está
 Necesitas Visual Studio Code con la extensión **ESP-IDF** de Espressif, usando la rama `release/v6.1` de ESP-IDF (mínimo v6.0.1; la 5.x ya no sirve).
 
 ```bash
-python scripts/build.py byte --language es-ES
+python scripts/build.py byte --language es-ES --custom-wake-word byte
 ```
+
+`--custom-wake-word byte` hace que Byte despierte al oír "Byte" (se pronuncia "bait", como en inglés). Usa el modelo MultiNet7 en inglés, el mismo método de Troko. Si quieres otra palabra, cámbiala ahí; solo letras en inglés, sin tildes.
 
 El `.bin` queda en la carpeta `build/`. Para cargarlo, conecta la placa por USB-C y ejecuta `idf.py -p COMx flash` (cambia `COMx` por el puerto de tu placa).
 
@@ -34,7 +36,7 @@ El `.bin` queda en la carpeta `build/`. Para cargarlo, conecta la placa por USB-
 
 1. Al encender, Byte crea una red Wi-Fi propia. Conéctate a ella desde el celular y elige tu Wi-Fi de casa.
 2. En la pantalla aparece un código de 6 dígitos. Entra a [xiaozhi.me](https://xiaozhi.me) → Consola → Agregar dispositivo y escribe el código.
-3. Di "Byte" y empieza a hablar. Mientras la palabra propia no esté lista, toca la pantalla una vez para hablar.
+3. Di "Byte" y empieza a hablar. Si no te escucha, toca la pantalla una vez para hablar.
 
 ## Controles táctiles
 
@@ -47,8 +49,8 @@ El `.bin` queda en la carpeta `build/`. Para cargarlo, conecta la placa por USB-
 | Paso | Estado |
 |---|---|
 | Configuración de la placa Byte | ✅ Listo |
-| Entorno de compilación en el PC | ⏳ Pendiente |
-| Palabra de activación "Byte" | ⏳ Pendiente |
+| Entorno de compilación en el PC | ✅ Listo |
+| Palabra de activación "Byte" | ✅ Lista (falta probar en la placa) |
 | Caras de Byte a pantalla completa | ⏳ Pendiente |
 | Personalidad y voz en xiaozhi.me | ⏳ Pendiente |
 | Compilación automática del `.bin` en GitHub | ⏳ Pendiente |

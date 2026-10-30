@@ -19,5 +19,7 @@ Parte de la placa `freenove-esp32s3-display-2.8-lcd` de XiaoZhi. Por ahora usa e
 ## Compilar
 
 ```bash
-python scripts/build.py byte --language es-ES
+python scripts/build.py byte --language es-ES --custom-wake-word byte
 ```
+
+La palabra de activación "Byte" usa MultiNet7 en inglés. `build.py` la guarda en el `sdkconfig` y `build_default_assets.py` la escribe en `index.json` de la partición assets junto con el modelo `mn7_en`.
