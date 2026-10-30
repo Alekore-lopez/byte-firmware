@@ -1,0 +1,9 @@
+{
+    "type": "byte",
+    "target": "esp32s3",
+    "builds": [
+        {
+            "name": "byte"
+        }
+    ]
+}
