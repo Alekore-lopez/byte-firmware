@@ -41,3 +41,22 @@ Cuándo sale cada cara:
 - **Reposo** al esperar y **Dormido** tras 5 min sin uso. **Sin Wi-Fi** en modo configuración.
 
 La barra de estado de arriba y los subtítulos de abajo siguen igual, porque ahí salen el código de activación y los datos del wifi.
+
+## Autoprueba de hardware
+
+`byte_hw_check.*` revisa en unos milisegundos que cada pieza responda:
+
+| Prueba | Cómo | Si falla, revisar |
+|---|---|---|
+| Audio ES8311 (micrófono y parlante) | ¿responde en I2C 0x18? | soldaduras o pines 15/16 (SCL/SDA) |
+| Táctil FT6336 | ¿responde en I2C 0x38? | cable flexible de la pantalla |
+| PSRAM | tamaño ≥ 2 MB | módulo ESP32-S3 sin PSRAM o mal configurado |
+| Flash | tamaño ≥ 16 MB | módulo con menos memoria |
+| Batería | % y si está cargando | solo informa, no falla |
+
+Se ejecuta de dos formas:
+
+- **Al encender**, 3 s después de arrancar. Si algo falla, sale un aviso arriba en la pantalla durante 10 s. El detalle completo se ve siempre en `idf.py monitor`, en las líneas `ByteHwCheck`.
+- **Por voz**: "Byte, revisa tu hardware". La IA llama a la herramienta MCP `self.byte.hardware_test` y te dice el resultado.
+
+La pantalla no necesita prueba: si ves la cara de Byte, funciona. El micrófono y el parlante se prueban de verdad hablando con Byte. La autoprueba confirma que el chip de audio responde, pero no que el sonido salga bien.

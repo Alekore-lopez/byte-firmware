@@ -11,6 +11,7 @@
 #include "config.h"
 #include "mcp_server.h"
 #include "adc_battery_monitor.h"
+#include "byte_hw_check.h"
 
 #include <esp_log.h>
 #include <driver/i2c_master.h>
@@ -67,6 +68,7 @@ private:
     i2c_master_bus_handle_t codec_i2c_bus_;
     TouchDriver touch_;
     AdcBatteryMonitor* adc_battery_monitor_;
+    esp_timer_handle_t hw_check_timer_ = nullptr;
 
     void InitializeBatteryMonitor() {
         adc_battery_monitor_ = new AdcBatteryMonitor(ADC_UNIT_1, ADC_CHANNEL_8, 200000, 200000, GPIO_NUM_NC);
@@ -197,6 +199,43 @@ private:
     }
 
     void InitializeTools() {
+        // "Byte, revisa tu hardware": la IA llama a esta herramienta y lee el resultado
+        auto& mcp_server = McpServer::GetInstance();
+        mcp_server.AddTool("self.byte.hardware_test",
+            "Run Byte's hardware self-test and return which parts respond: audio codec "
+            "(microphone and speaker), touch controller, PSRAM, flash and battery. Use it when "
+            "the user asks to check, test or diagnose the device hardware.",
+            PropertyList(),
+            [this](const PropertyList& properties) -> ReturnValue {
+                auto result = ByteHwCheck::Run(codec_i2c_bus_, adc_battery_monitor_);
+                result.Log();
+                return result.ToJson();
+            });
+    }
+
+    // Autoprueba al encender: unos segundos después del arranque, cuando la
+    // pantalla ya está lista. Solo avisa en pantalla si algo falla.
+    void ScheduleBootHardwareCheck() {
+        esp_timer_create_args_t args = {
+            .callback = [](void* arg) {
+                // El temporizador solo agenda la prueba; corre en la tarea principal,
+                // que tiene más memoria de pila que la del temporizador
+                auto* self = static_cast<ByteBoard*>(arg);
+                Application::GetInstance().Schedule([self]() {
+                    auto result = ByteHwCheck::Run(self->codec_i2c_bus_, self->adc_battery_monitor_);
+                    result.Log();
+                    if (!result.all_ok()) {
+                        self->display_->ShowNotification(result.FailureSummary(), 10000);
+                    }
+                });
+            },
+            .arg = this,
+            .dispatch_method = ESP_TIMER_TASK,
+            .name = "byte_hw_check",
+            .skip_unhandled_events = true,
+        };
+        ESP_ERROR_CHECK(esp_timer_create(&args, &hw_check_timer_));
+        ESP_ERROR_CHECK(esp_timer_start_once(hw_check_timer_, 3 * 1000 * 1000));
     }
 
 public:
@@ -209,6 +248,7 @@ public:
         InitializeTouch();
         InitializeButtons();
         InitializeTools();
+        ScheduleBootHardwareCheck();
         GetBacklight()->SetBrightness(100);
     }
 
