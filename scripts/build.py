@@ -35,6 +35,9 @@ _WAKE_WORD_TARGETS = (
     "esp32s31",
 )
 _WAKE_WORD_MODEL_PATTERN = re.compile(r"^wn9[sl]?_[a-z0-9_]+$")
+# MultiNet7 English takes plain lowercase words, e.g. "byte" or "hey robot".
+_CUSTOM_WAKE_WORD_PATTERN = re.compile(r"^[a-z]+(?: [a-z]+)*$")
+_CUSTOM_WAKE_WORD_MODEL_SYMBOL = "CONFIG_SR_MN_EN_MULTINET7_QUANT"
 _ESP_SR_KCONFIG = Path(
     "managed_components/espressif__esp-sr/Kconfig.projbuild"
 )
@@ -375,6 +378,38 @@ def _wake_word_sdkconfig_options(
     model_symbol = f"CONFIG_SR_WN_{normalized.upper()}"
     options.extend((f"{implementation}=y", f"{model_symbol}=y"))
     return normalized, options, [implementation, model_symbol]
+
+def _custom_wake_word_sdkconfig_options(
+    phrase: str,
+    target: str,
+) -> tuple[str, list[str], list[str]]:
+    """Map an English phrase to the MultiNet custom wake-word options."""
+    normalized = " ".join(phrase.strip().casefold().split())
+    if not _CUSTOM_WAKE_WORD_PATTERN.fullmatch(normalized):
+        raise ValueError(
+            f"Invalid custom wake word {phrase!r}. Use English words with "
+            "letters a-z separated by spaces, for example 'byte'."
+        )
+    if target not in _AFE_WAKE_WORD_TARGETS:
+        raise ValueError(
+            f"Custom wake words need MultiNet, which target {target} does not support"
+        )
+
+    display = normalized.title()
+    options = [
+        "CONFIG_WAKE_WORD_DISABLED=n",
+        "CONFIG_USE_ESP_WAKE_WORD=n",
+        "CONFIG_USE_AFE_WAKE_WORD=n",
+        "CONFIG_USE_CUSTOM_WAKE_WORD=y",
+        f"{_CUSTOM_WAKE_WORD_MODEL_SYMBOL}=y",
+        f'CONFIG_CUSTOM_WAKE_WORD="{normalized}"',
+        f'CONFIG_CUSTOM_WAKE_WORD_DISPLAY="{display}"',
+    ]
+    return (
+        normalized,
+        options,
+        ["CONFIG_USE_CUSTOM_WAKE_WORD", _CUSTOM_WAKE_WORD_MODEL_SYMBOL],
+    )
 
 ################################################################################
 # board / variant related functions
@@ -1518,6 +1553,7 @@ def build_board(
     create_zip: bool = False,
     language: Optional[str] = None,
     wake_word: Optional[str] = None,
+    custom_wake_word: Optional[str] = None,
     build_options: Optional[dict[str, object]] = None,
     idf_version: tuple[int, int, int] = (6, 0, 0),
 ) -> None:
@@ -1530,6 +1566,7 @@ def build_board(
         create_zip: package merged-binary.bin under releases/ when true
         language: optional locale such as zh-CN; defaults to en-US when omitted
         wake_word: optional model/alias; otherwise selected from language and board support
+        custom_wake_word: optional English phrase detected with MultiNet instead of WakeNet
         build_options: optional semantic, board-validated option values
     """
     cfg_path = _BOARDS_DIR / Path(board_type) / config_filename
@@ -1612,25 +1649,37 @@ def build_board(
             ([option.split("=", 1)[0]], "--language")
         )
         wake_word_supported = _board_supports_wake_word(target, sdkconfig_append)
-        requested_wake_word = wake_word
-        if requested_wake_word is None:
-            requested_wake_word = "disabled"
-            if wake_word_supported:
-                requested_wake_word = (
-                    "nihaoxiaozhi" if selected_language in {"zh-CN", "zh-TW"} else "hiesp"
-                )
-        (
-            selected_wake_word,
-            wake_word_options,
-            wake_word_symbols,
-        ) = _wake_word_sdkconfig_options(requested_wake_word, target)
+        if custom_wake_word is not None:
+            if wake_word is not None:
+                raise ValueError("--wake-word and --custom-wake-word are mutually exclusive")
+            (
+                selected_wake_word,
+                wake_word_options,
+                wake_word_symbols,
+            ) = _custom_wake_word_sdkconfig_options(custom_wake_word, target)
+        else:
+            requested_wake_word = wake_word
+            if requested_wake_word is None:
+                requested_wake_word = "disabled"
+                if wake_word_supported:
+                    requested_wake_word = (
+                        "nihaoxiaozhi" if selected_language in {"zh-CN", "zh-TW"} else "hiesp"
+                    )
+            (
+                selected_wake_word,
+                wake_word_options,
+                wake_word_symbols,
+            ) = _wake_word_sdkconfig_options(requested_wake_word, target)
         if selected_wake_word != "disabled" and not wake_word_supported:
             raise ValueError(
                 f"Wake-word detection is disabled or unsupported for {final_name!r}; "
                 "check the board opt-out and target PSRAM requirements."
             )
         user_options.extend(wake_word_options)
-        validation_symbols.append((wake_word_symbols, "--wake-word"))
+        validation_symbols.append((
+            wake_word_symbols,
+            "--wake-word" if custom_wake_word is None else "--custom-wake-word",
+        ))
 
         # A build entry may carry semantic defaults to preserve an existing
         # board-specific behavior after it moves out of hardcoded C++.
@@ -1786,6 +1835,15 @@ def main(argv: Optional[list[str]] = None) -> None:
         ),
     )
     parser.add_argument(
+        "--custom-wake-word",
+        metavar="PHRASE",
+        help=(
+            "English wake phrase detected with MultiNet7 (for example 'byte'). "
+            "Requires an ESP32-S3/P4/S31 board with PSRAM; cannot be combined "
+            "with --wake-word"
+        ),
+    )
+    parser.add_argument(
         "--build-options-json",
         metavar="JSON",
         help=(
@@ -1819,6 +1877,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             or args.name
             or args.language
             or args.wake_word
+            or args.custom_wake_word
             or args.build_options_json
             or args.zip
             or args.json
@@ -1838,6 +1897,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             or args.name
             or args.language
             or args.wake_word
+            or args.custom_wake_word
             or args.build_options_json
             or args.zip
         ):
@@ -1859,6 +1919,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             or args.name
             or args.language
             or args.wake_word
+            or args.custom_wake_word
             or args.build_options_json
             or args.zip
         ):
@@ -1887,6 +1948,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             or args.name
             or args.language
             or args.wake_word
+            or args.custom_wake_word
             or args.build_options_json
         ):
             parser.error(
@@ -1966,6 +2028,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             create_zip=args.zip,
             language=args.language,
             wake_word=args.wake_word,
+            custom_wake_word=args.custom_wake_word,
             build_options=parsed_build_options,
             idf_version=idf_version,
         )
