@@ -23,3 +23,21 @@ python scripts/build.py byte --language es-ES --custom-wake-word byte
 ```
 
 La palabra de activación "Byte" usa MultiNet7 en inglés. `build.py` la guarda en el `sdkconfig` y `build_default_assets.py` la escribe en `index.json` de la partición assets junto con el modelo `mn7_en`.
+
+## Caras animadas
+
+La pantalla muestra los ojos de Byte en lugar del emoji de XiaoZhi. Son las 17 caras del visor de caras, adaptadas a 320×240.
+
+| Archivo | Qué hace |
+|---|---|
+| `byte_faces.h` | La tabla de caras: color, ojos, accesorios y animación de cada una, y qué emoción de XiaoZhi corresponde a cada cara. Para crear o ajustar una cara se edita solo esta tabla. |
+| `byte_face_renderer.*` | El motor: mueve los ojos hacia la cara destino (transición de 260 ms), parpadea, mira alrededor y dibuja con LVGL. Solo repinta el rectángulo que cambió, porque la pantalla completa tarda unos 60 ms por SPI. |
+| `byte_face_display.*` | Hereda de `SpiLcdDisplay` y elige la cara según el estado del aparato (escuchando, pensando, hablando, sin wifi) y la emoción que manda la IA. |
+
+Cuándo sale cada cara:
+
+- **Escucha** al oír "Byte", **Pensando** mientras conecta, **Hablando** mientras responde.
+- Si la IA manda una emoción (`happy`, `sad`, `angry`…), Byte la pone mientras habla, con la boca de barras encima, y la mantiene 4 s al terminar.
+- **Reposo** al esperar y **Dormido** tras 5 min sin uso. **Sin Wi-Fi** en modo configuración.
+
+La barra de estado de arriba y los subtítulos de abajo siguen igual, porque ahí salen el código de activación y los datos del wifi.
