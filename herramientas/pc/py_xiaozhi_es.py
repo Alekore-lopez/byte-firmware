@@ -15,6 +15,8 @@ Su interfaz viene solo en chino, así que este script:
      volver a escuchar (antes se cortaba el final de cada respuesta).
   5. Abre la Pantalla de Byte en vivo: la cara de Byte cambia y muestra lo
      que dice, como en la placa (byte_pantalla.py + byte_pantalla.html).
+     La ventana vieja de py-xiaozhi arranca escondida: se abre con Ctrl+W
+     o desde el ícono junto al reloj ("Mostrar ventana").
 
 Se puede correr varias veces sin problema. Para deshacerlo:
     git checkout .     (dentro de la carpeta py-xiaozhi)
@@ -353,6 +355,26 @@ PANTALLA = [
 ]
 
 
+# La ventana vieja (carita amarilla) ya no hace falta: arranca escondida
+MARCA_OCULTA = "# BYTE: ventana vieja escondida"
+BUSCAR_OCULTA = """        self._host.show_root(activate=False)
+"""
+PONER_OCULTA = f"""        {MARCA_OCULTA} (Ctrl+W o el ícono junto al reloj la muestran)
+"""
+
+
+def esconder_ventana_vieja(raiz: pathlib.Path) -> None:
+    archivo = raiz / "src" / "ui" / "gui" / "manager.py"
+    codigo = archivo.read_text(encoding="utf-8")
+    if MARCA_OCULTA in codigo:
+        return
+    if codigo.count(BUSCAR_OCULTA) == 1:
+        archivo.write_text(codigo.replace(BUSCAR_OCULTA, PONER_OCULTA), encoding="utf-8", newline="")
+        print("Ventana vieja: ahora arranca escondida (Ctrl+W la muestra).")
+    else:
+        print("Aviso: src/ui/gui/manager.py cambió y no pude esconder la ventana vieja.")
+
+
 def bajar(nombre: str, destino: pathlib.Path) -> bool:
     # Si el archivo está junto a este script (repo byte-firmware), se usa ese
     local = pathlib.Path(__file__).resolve().parent / nombre
@@ -376,6 +398,7 @@ def instalar_pantalla(raiz: pathlib.Path) -> None:
     codigo = ui.read_text(encoding="utf-8")
     if MARCA_PANTALLA in codigo:
         print("Pantalla en vivo: actualizada.")
+        esconder_ventana_vieja(raiz)
         return
     for buscar, _ in PANTALLA:
         if codigo.count(buscar) != 1:
@@ -385,6 +408,7 @@ def instalar_pantalla(raiz: pathlib.Path) -> None:
         codigo = codigo.replace(buscar, poner)
     ui.write_text(codigo, encoding="utf-8", newline="")
     print("Pantalla en vivo: lista. Se abrirá sola al iniciar el programa.")
+    esconder_ventana_vieja(raiz)
 
 
 def arreglar_final(raiz: pathlib.Path) -> None:
