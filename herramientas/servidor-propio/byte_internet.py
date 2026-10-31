@@ -148,6 +148,17 @@ def clima(ciudad: str) -> dict:
     }
 
 
+# Spotify (opcional): se carga solo si ya corriste activar-spotify.ps1
+try:
+    import byte_spotify
+
+    if byte_spotify.listo():
+        byte_spotify.registrar(mcp)
+        logger.info("Herramientas de Spotify cargadas")
+except Exception:
+    logger.exception("No pude cargar Spotify; sigo sin él")
+
+
 PUERTO = 8805
 
 if __name__ == "__main__":

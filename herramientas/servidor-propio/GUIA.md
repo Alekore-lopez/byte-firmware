@@ -37,6 +37,13 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 ```
 Instala `byte_internet.py` en `$HOME\byte-servidor\internet`, lo deja corriendo sin ventana en el puerto 8805 (solo en tu PC) y en el Inicio de Windows, crea `data\.mcp_server_settings.json` para que la central lo use, ajusta la personalidad y reinicia. No necesita claves: usa DuckDuckGo y Open-Meteo. Registro: `$HOME\byte-servidor\internet\registro.txt`.
 
+## Spotify (Byte como control remoto)
+Necesita Spotify Premium y haber corrido `activar-internet.ps1`.
+```
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/activar-spotify.ps1?v=$(Get-Random)" | iex
+```
+Te guía para crear una app gratis en developer.spotify.com (Redirect URI `http://127.0.0.1:8806/callback`), inicia sesión una vez y suma las herramientas `spotify_poner`, `spotify_control`, `spotify_volumen` y `spotify_que_suena`. La música suena donde tengas Spotify abierto (PC, celular o TV), no en el parlante de Byte. El permiso queda en `internet\spotify_token.json`: no lo compartas.
+
 ## Arreglos de la central (`parche_byte.py`)
 `docker-compose.yml` corre `data/parche_byte.py` antes de arrancar. Arregla tres cosas de la versión 0.9.8: las herramientas propias no cargaban (`'Tool' object has no attribute 'inputSchema'`), Gemini 3 rechazaba las herramientas (`missing a thought_signature`) y Whisper no sabía que hablas español. Si ya tenías la central instalada:
 ```
