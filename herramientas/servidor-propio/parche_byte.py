@@ -14,6 +14,9 @@ reinicios y actualizaciones sin romper nada.
    caso, solo cuando el cerebro es Gemini.
 3. Oído (Whisper): se le dice que el idioma es español para que no confunda
    palabras con otros idiomas, y se le dan los nombres que debe reconocer.
+4. Gemini 3 "piensa" a fondo por defecto (nivel alto), y eso le suma segundos
+   a cada respuesta. Para un asistente de voz basta con pensar poco
+   (reasoning_effort "low").
 """
 
 import re
@@ -93,5 +96,16 @@ parchar(
         'data = {"model": self.model, "language": "es", "prompt": "Byte, Alecore, Paula."}',
         t,
         count=1,
+    ),
+)
+
+# 4) Gemini piensa poco (más rápido)
+parchar(
+    "core/providers/llm/openai/openai.py",
+    '"googleapis.com": {"reasoning_effort"',
+    lambda t: t.replace(
+        "THINKING_DISABLED_DOMAINS = {\n",
+        'THINKING_DISABLED_DOMAINS = {\n    "googleapis.com": {"reasoning_effort": "low"},\n',
+        1,
     ),
 )
