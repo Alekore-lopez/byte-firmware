@@ -1,9 +1,13 @@
 #include "byte_face_display.h"
 
 #include <cstring>
+#include <esp_app_desc.h>
 #include <esp_log.h>
+#include <esp_wifi.h>
 
 #include "application.h"
+#include "assets/lang_config.h"
+#include "board.h"
 
 #define TAG "ByteFace"
 
@@ -27,6 +31,9 @@ const byte_face_t* FindFace(const char* id) {
 ByteFaceDisplay::~ByteFaceDisplay() {
     if (timer_ != nullptr) {
         lv_timer_delete(timer_);
+    }
+    if (touch_ != nullptr) {
+        lv_indev_delete(touch_);
     }
 }
 
@@ -54,6 +61,115 @@ void ByteFaceDisplay::SetupUI() {
     renderer_.Init(width_, height_, FindFace("reposo"), now);
     lv_obj_add_event_cb(face_, OnDraw, LV_EVENT_DRAW_MAIN, this);
     timer_ = lv_timer_create(OnTimer, kFrameMs, this);
+
+    // Pantallas táctiles justo encima de la cara (debajo de la barra de estado)
+    ui_.Init(screen, width_, height_, MakeUiHost());
+    lv_obj_move_to_index(ui_.root(), lv_obj_get_index(face_) + 1);
+}
+
+// Lo que las pantallas táctiles necesitan del aparato
+ByteUiHost ByteFaceDisplay::MakeUiHost() {
+    ByteUiHost host;
+    host.get_volume = [] { return Board::GetInstance().GetAudioCodec()->output_volume(); };
+    host.set_volume = [](int volume) { Board::GetInstance().GetAudioCodec()->SetOutputVolume(volume); };
+    host.get_brightness = [] {
+        auto backlight = Board::GetInstance().GetBacklight();
+        return backlight != nullptr ? static_cast<int>(backlight->brightness()) : 100;
+    };
+    host.set_brightness = [](int brightness, bool save) {
+        if (auto backlight = Board::GetInstance().GetBacklight()) {
+            backlight->SetBrightness(brightness, save);
+        }
+    };
+    host.notify = [this](const char* text) { ShowNotification(text, 3000); };
+    host.play_alarm = [] {
+        auto& app = Application::GetInstance();
+        app.Schedule([&app] { app.PlaySound(Lang::Sounds::OGG_POPUP); });
+    };
+    host.reboot = [] {
+        auto& app = Application::GetInstance();
+        app.Schedule([&app] { app.Reboot(); });
+    };
+    host.wifi_name = [] {
+        wifi_ap_record_t ap = {};
+        if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+            return std::string(reinterpret_cast<const char*>(ap.ssid));
+        }
+        return std::string();
+    };
+    host.firmware_version = [] { return std::string(esp_app_get_description()->version); };
+    host.preview_face = [this](int index) { preview_ = index >= 0 ? &kByteFaces[index] : nullptr; };
+    host.home_tap = [this] { OnHomeTap(); };
+    host.home_long_press = [this] {
+        if (long_press_) {
+            long_press_();
+        }
+    };
+    host.activity = [this] { last_touch_ = lv_tick_get(); };
+    return host;
+}
+
+void ByteFaceDisplay::AttachTouch(std::function<bool(int&, int&)> read, std::function<void()> long_press) {
+    DisplayLockGuard lock(this);
+    touch_read_ = std::move(read);
+    long_press_ = std::move(long_press);
+    // El táctil pasa a ser una entrada de LVGL: así los botones de las pantallas
+    // reciben los toques, y ByteUi ve cada muestra para detectar deslizamientos
+    touch_ = lv_indev_create();
+    lv_indev_set_type(touch_, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(touch_, OnTouchRead);
+    lv_indev_set_user_data(touch_, this);
+    lv_indev_set_display(touch_, display_);
+}
+
+// Corre en la tarea de LVGL unas 30 veces por segundo
+void ByteFaceDisplay::OnTouchRead(lv_indev_t* indev, lv_indev_data_t* data) {
+    auto self = static_cast<ByteFaceDisplay*>(lv_indev_get_user_data(indev));
+    int x = 0, y = 0;
+    bool pressed = self->touch_read_ && self->touch_read_(x, y);
+    if (pressed) {
+        self->touch_x_ = x;
+        self->touch_y_ = y;
+    }
+    // Al soltar, LVGL quiere el último punto donde estaba el dedo
+    data->point.x = self->touch_x_;
+    data->point.y = self->touch_y_;
+    data->state = pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    if (self->ui_.root() != nullptr) {
+        self->ui_.Feed(indev, pressed, self->touch_x_, self->touch_y_);
+    }
+}
+
+// Toque corto sobre la cara
+void ByteFaceDisplay::OnHomeTap() {
+    auto& app = Application::GetInstance();
+    DeviceState state = app.GetDeviceState();
+    if (state == kDeviceStateListening || state == kDeviceStateSpeaking) {
+        app.ToggleChatState();  // tocarlo mientras escucha o habla lo interrumpe
+        return;
+    }
+    if (state != kDeviceStateIdle) {
+        return;
+    }
+    // Cosquillas: una reacción distinta cada vez, que dura como una expresión
+    static constexpr const char* kTickles[] = {"feliz", "risa", "guino", "carino"};
+    expression_ = FindFace(kTickles[tickle_++ % 4]);
+    idle_since_ = lv_tick_get();
+}
+
+void ByteFaceDisplay::StartTimer(int seconds) {
+    DisplayLockGuard lock(this);
+    ui_.StartTimer(seconds);
+}
+
+void ByteFaceDisplay::StopTimer() {
+    DisplayLockGuard lock(this);
+    ui_.StopTimer();
+}
+
+int ByteFaceDisplay::TimerSecondsLeft() {
+    DisplayLockGuard lock(this);
+    return ui_.TimerRunning() ? ui_.TimerSecondsLeft() : 0;
 }
 
 bool ByteFaceDisplay::SetEmotion(const char* emotion) {
@@ -93,6 +209,12 @@ const byte_face_t* ByteFaceDisplay::ChooseFace(uint32_t now) {
         last_state_ = state;
     }
 
+    // En la galería manda la cara elegida
+    if (preview_ != nullptr) {
+        renderer_.SetTalking(false);
+        return preview_;
+    }
+
     renderer_.SetTalking(state == kDeviceStateSpeaking);
     switch (state) {
         case kDeviceStateWifiConfiguring:
@@ -116,7 +238,10 @@ const byte_face_t* ByteFaceDisplay::ChooseFace(uint32_t now) {
                 return expression_;
             }
             expression_ = nullptr;
-            return FindFace(idle > kSleepAfterMs ? "dormido" : "reposo");
+            // Se duerme si pasan 5 min sin hablarle ni tocarlo
+            uint32_t untouched = now - last_touch_;
+            bool sleepy = idle > kSleepAfterMs && untouched > kSleepAfterMs;
+            return FindFace(sleepy ? "dormido" : "reposo");
         }
     }
 }

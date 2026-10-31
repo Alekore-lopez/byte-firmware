@@ -19,6 +19,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_timer.h>
+#include <utility>
 
 #include "led/single_led.h"
 #include "system_reset.h"
@@ -64,9 +65,10 @@ private:
 class ByteBoard : public WifiBoard {
 private:
     Button boot_button_;
-    LcdDisplay *display_;
+    ByteFaceDisplay *display_;
     i2c_master_bus_handle_t codec_i2c_bus_;
     TouchDriver touch_;
+    bool touch_down_ = false;
     AdcBatteryMonitor* adc_battery_monitor_;
     esp_timer_handle_t hw_check_timer_ = nullptr;
 
@@ -74,56 +76,33 @@ private:
         adc_battery_monitor_ = new AdcBatteryMonitor(ADC_UNIT_1, ADC_CHANNEL_8, 200000, 200000, GPIO_NUM_NC);
     }
 
-    static void TouchTask(void *arg) {
-        auto *self = static_cast<ByteBoard*>(arg);
-        auto &app = Application::GetInstance();
-
-        uint32_t last_tap = 0;
-        uint32_t down_start = 0;
-        bool down = false;
-
-        while (true) {
-            bool t;
-            uint16_t x, y;
-            self->touch_.Read(t, x, y);
-
-            uint32_t now = esp_timer_get_time() / 1000;
-
-            if (t) {
-                if (!down) {
-                    down = true;
-                    down_start = now;
-                }
-            }
-
-            if (!t && down) {
-                down = false;
-
-                uint32_t press = now - down_start;
-
-                // long tap
-                if (press > 3000) {
-                    self->EnterWifiConfigMode();
-                } else {
-                    // double tap
-                    if (now - last_tap < 250) {
-                        app.StartListening();
-                        last_tap = 0;
-                    } else {
-                        // single tap
-                        app.ToggleChatState();
-                        last_tap = now;
-                    }
-                }
-            }
-
-            vTaskDelay(pdMS_TO_TICKS(50));
-        }
-    }
-
     void InitializeTouch() {
         if (!touch_.Init(codec_i2c_bus_, 0x38)) return;
-        xTaskCreatePinnedToCore(TouchTask, "touch_task", 4096, this, 5, nullptr, 0);
+        display_->AttachTouch(
+            [this](int& x, int& y) {
+                bool touched;
+                uint16_t tx, ty;
+                if (!touch_.Read(touched, tx, ty) || !touched) {
+                    touch_down_ = false;
+                    return false;
+                }
+                // El táctil cuenta en vertical (240x320) y la pantalla está acostada
+                if (TOUCH_SWAP_XY) {
+                    std::swap(tx, ty);
+                }
+                x = TOUCH_MIRROR_X ? DISPLAY_WIDTH - 1 - tx : tx;
+                y = TOUCH_MIRROR_Y ? DISPLAY_HEIGHT - 1 - ty : ty;
+                if (!touch_down_) {
+                    // Para revisar la orientación: tocar las esquinas y mirar el monitor
+                    ESP_LOGI(TAG, "Toque en x=%d y=%d", x, y);
+                    touch_down_ = true;
+                }
+                return true;
+            },
+            // 3 s sobre la cara: modo de configuración Wi-Fi
+            [this]() {
+                Application::GetInstance().Schedule([this]() { EnterWifiConfigMode(); });
+            });
     }
 
     void InitializeI2c() {
@@ -211,6 +190,29 @@ private:
                 result.Log();
                 return result.ToJson();
             });
+
+        // "Byte, pon un temporizador de 5 minutos": el mismo de la pantalla
+        mcp_server.AddTool("self.byte.timer.start",
+            "Start Byte's countdown timer, shown on the screen with an alarm when it ends. "
+            "Convert minutes or hours to seconds. Starting it again replaces the current timer.",
+            PropertyList({Property("seconds", kPropertyTypeInteger, 1, 24 * 3600)}),
+            [this](const PropertyList& properties) -> ReturnValue {
+                display_->StartTimer(properties["seconds"].value<int>());
+                return true;
+            });
+        mcp_server.AddTool("self.byte.timer.stop",
+            "Stop and reset Byte's countdown timer.",
+            PropertyList(),
+            [this](const PropertyList& properties) -> ReturnValue {
+                display_->StopTimer();
+                return true;
+            });
+        mcp_server.AddTool("self.byte.timer.get",
+            "Get how many seconds are left on Byte's countdown timer (0 if it is not running).",
+            PropertyList(),
+            [this](const PropertyList& properties) -> ReturnValue {
+                return display_->TimerSecondsLeft();
+            });
     }
 
     // Autoprueba al encender: unos segundos después del arranque, cuando la
@@ -249,7 +251,7 @@ public:
         InitializeButtons();
         InitializeTools();
         ScheduleBootHardwareCheck();
-        GetBacklight()->SetBrightness(100);
+        GetBacklight()->RestoreBrightness();  // el brillo que se eligió en la pantalla
     }
 
     virtual Led *GetLed() override {
