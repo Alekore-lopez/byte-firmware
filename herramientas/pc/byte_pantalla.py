@@ -7,6 +7,10 @@ recibe la placa desde la nube, así que la pantalla se comporta como la real.
 
 Tocar la cara empieza a conversar o corta lo que esté pasando.
 
+Si existe la carpeta byte-internet (herramientas de búsqueda, noticias y
+clima), también la arranca en segundo plano y la cierra al salir. Lo que
+escribe queda en byte-internet\registro.txt.
+
 Solo escucha en 127.0.0.1 (este PC) y solo le responde a su propia página.
 py_xiaozhi_es.py copia este archivo a src/plugins/ y lo conecta en ui.py.
 """
@@ -16,6 +20,7 @@ import json
 import os
 import pathlib
 import subprocess
+import sys
 
 from aiohttp import web
 
@@ -27,6 +32,7 @@ PUERTO = 8765
 URL = f"http://127.0.0.1:{PUERTO}"
 PAGINA = pathlib.Path(__file__).resolve().parent / "byte_pantalla.html"
 ICONO = pathlib.Path(os.environ.get("LOCALAPPDATA", "")) / "Byte" / "byte.ico"
+INTERNET = pathlib.Path.home() / "byte-internet"
 
 
 class PantallaByte:
@@ -35,6 +41,7 @@ class PantallaByte:
         self._clientes: set[asyncio.Queue] = set()
         self._runner: web.AppRunner | None = None
         self._estado = "idle"
+        self._internet: subprocess.Popen | None = None
 
     async def start(self) -> None:
         app = web.Application()
@@ -53,8 +60,12 @@ class PantallaByte:
             return
         logger.info(f"Pantalla de Byte en {URL}")
         abrir_ventana()
+        self._internet = arrancar_internet()
 
     async def stop(self) -> None:
+        if self._internet is not None:
+            cerrar_internet(self._internet)
+            self._internet = None
         for cola in list(self._clientes):
             cola.put_nowait(None)
         if self._runner is not None:
@@ -146,3 +157,41 @@ def abrir_ventana() -> None:
         )
     except OSError as e:
         logger.warning(f"No pude abrir la ventana de la pantalla: {e}. Ábrela en {URL}")
+
+
+def arrancar_internet() -> subprocess.Popen | None:
+    """Arranca las herramientas de internet (byte-internet) si están instaladas."""
+    if not ((INTERNET / "mcp_pipe.py").exists() and (INTERNET / "byte_internet.py").exists()):
+        return None
+    try:
+        registro = open(INTERNET / "registro.txt", "w", encoding="utf-8")
+        proceso = subprocess.Popen(
+            [sys.executable, "mcp_pipe.py", "byte_internet.py"],
+            cwd=INTERNET,
+            stdout=registro,
+            stderr=subprocess.STDOUT,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    except OSError as e:
+        logger.warning(f"No pude arrancar byte-internet: {e}")
+        return None
+    logger.info("Herramientas de internet arrancadas (byte-internet)")
+    return proceso
+
+
+def cerrar_internet(proceso: subprocess.Popen) -> None:
+    """Cierra mcp_pipe.py junto con el byte_internet.py que arrancó."""
+    if proceso.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(proceso.pid)],
+            capture_output=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+    else:
+        proceso.terminate()
+    try:
+        proceso.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proceso.kill()

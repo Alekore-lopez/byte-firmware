@@ -17,6 +17,8 @@ Su interfaz viene solo en chino, así que este script:
      que dice, como en la placa (byte_pantalla.py + byte_pantalla.html).
      La ventana vieja de py-xiaozhi arranca escondida: se abre con Ctrl+W
      o desde el ícono junto al reloj ("Mostrar ventana").
+     También arranca las herramientas de internet (carpeta byte-internet).
+  6. Deja Byte.bat en el escritorio para abrir todo con doble clic.
 
 Se puede correr varias veces sin problema. Para deshacerlo:
     git checkout .     (dentro de la carpeta py-xiaozhi)
@@ -411,6 +413,32 @@ def instalar_pantalla(raiz: pathlib.Path) -> None:
     esconder_ventana_vieja(raiz)
 
 
+def crear_bat(raiz: pathlib.Path) -> None:
+    """Byte.bat en el escritorio: doble clic y abre todo."""
+    if sys.platform != "win32":
+        return
+    import subprocess
+
+    try:
+        escritorio = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", "[Environment]::GetFolderPath('Desktop')"],
+            capture_output=True, text=True, timeout=30,
+        ).stdout.strip()
+    except OSError:
+        escritorio = ""
+    escritorio = pathlib.Path(escritorio or pathlib.Path.home() / "Desktop")
+    bat = escritorio / "Byte.bat"
+    bat.write_text(
+        "@echo off\r\n"
+        "title Byte\r\n"
+        f'cd /d "{raiz}"\r\n'
+        f'"{sys.executable}" main.py\r\n',
+        encoding="ascii",
+        errors="replace",
+    )
+    print(f"Listo: {bat} (doble clic para abrir Byte).")
+
+
 def arreglar_final(raiz: pathlib.Path) -> None:
     archivo = raiz / "src" / "bootstrap" / "session.py"
     codigo = archivo.read_text(encoding="utf-8")
@@ -492,6 +520,7 @@ def main() -> int:
     arreglar_final(raiz)
     arreglar_audio(raiz)
     instalar_pantalla(raiz)
+    crear_bat(raiz)
     return 0
 
 
