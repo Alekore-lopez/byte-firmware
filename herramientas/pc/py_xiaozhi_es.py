@@ -13,6 +13,8 @@ Su interfaz viene solo en chino, así que este script:
      y espacio para respuestas largas (antes se perdía lo que pasaba de 10 s).
   4. En modo automático deja que la respuesta termine de sonar antes de
      volver a escuchar (antes se cortaba el final de cada respuesta).
+  5. Abre la Pantalla de Byte en vivo: la cara de Byte cambia y muestra lo
+     que dice, como en la placa (byte_pantalla.py + byte_pantalla.html).
 
 Se puede correr varias veces sin problema. Para deshacerlo:
     git checkout .     (dentro de la carpeta py-xiaozhi)
@@ -24,6 +26,10 @@ Uso, dentro de la carpeta py-xiaozhi:
 import json
 import pathlib
 import sys
+import urllib.request
+
+# De aquí se bajan los archivos de la pantalla en vivo
+RAMA = "https://raw.githubusercontent.com/Alekore-lopez/byte-firmware/claude/project-thread-p61eh2/herramientas/pc/"
 
 # Chino -> español. Se reemplazan primero los textos más largos para que
 # las palabras sueltas ("测试") no rompan frases que las contienen.
@@ -285,6 +291,102 @@ AGREGAR_FINAL = f"""        {MARCA_FINAL} antes de volver a escuchar
 """
 
 
+# Pantalla en vivo: ui.py arranca el servidor y le pasa estados y mensajes.
+MARCA_PANTALLA = "# BYTE: pantalla en vivo"
+PANTALLA = [
+    (
+        "from src.plugins.ui_session import SessionActions\n",
+        "from src.plugins.ui_session import SessionActions\n"
+        f"from src.plugins.byte_pantalla import PantallaByte  {MARCA_PANTALLA}\n",
+    ),
+    (
+        """        if self._session:
+            self._session.subscribe(bus)
+""",
+        f"""        if self._session:
+            self._session.subscribe(bus)
+
+        {MARCA_PANTALLA}
+        if self.mode == "gui" and self._session is not None:
+            self._pantalla = PantallaByte(self._tocar_cara)
+            await self._pantalla.start()
+""",
+    ),
+    (
+        """    async def on_incoming_json(self, message) -> None:
+""",
+        f"""    async def _tocar_cara(self, estado: str) -> None:
+        {MARCA_PANTALLA}: tocar la cara empieza a conversar o corta
+        if self._session is None:
+            return
+        if estado == "speaking":
+            await self._session.abort()
+            return
+        if not self._session.auto_mode:
+            await self._session.auto_toggle()
+        await self._session.auto_session_toggle()
+
+    async def on_incoming_json(self, message) -> None:
+        if getattr(self, "_pantalla", None) is not None:
+            self._pantalla.mensaje(message)
+""",
+    ),
+    (
+        """    async def on_device_state_changed(self, state) -> None:
+""",
+        """    async def on_device_state_changed(self, state) -> None:
+        if getattr(self, "_pantalla", None) is not None:
+            self._pantalla.estado(state)
+""",
+    ),
+    (
+        """    async def stop(self) -> None:
+        self._stopping = True
+""",
+        """    async def stop(self) -> None:
+        self._stopping = True
+        if getattr(self, "_pantalla", None) is not None:
+            await self._pantalla.stop()
+            self._pantalla = None
+""",
+    ),
+]
+
+
+def bajar(nombre: str, destino: pathlib.Path) -> bool:
+    # Si el archivo está junto a este script (repo byte-firmware), se usa ese
+    local = pathlib.Path(__file__).resolve().parent / nombre
+    if local.exists():
+        destino.write_bytes(local.read_bytes())
+        return True
+    try:
+        with urllib.request.urlopen(RAMA + nombre, timeout=30) as r:
+            destino.write_bytes(r.read())
+        return True
+    except OSError as e:
+        print(f"Aviso: no pude bajar {nombre} ({e}).")
+        return False
+
+
+def instalar_pantalla(raiz: pathlib.Path) -> None:
+    plugins = raiz / "src" / "plugins"
+    if not (bajar("byte_pantalla.py", plugins / "byte_pantalla.py") and bajar("byte_pantalla.html", plugins / "byte_pantalla.html")):
+        return
+    ui = plugins / "ui.py"
+    codigo = ui.read_text(encoding="utf-8")
+    if MARCA_PANTALLA in codigo:
+        print("Pantalla en vivo: actualizada.")
+        return
+    for buscar, _ in PANTALLA:
+        if codigo.count(buscar) != 1:
+            print("Aviso: src/plugins/ui.py cambió y no pude conectar la pantalla en vivo.")
+            return
+    for buscar, poner in PANTALLA:
+        codigo = codigo.replace(buscar, poner)
+    ui.write_text(codigo, encoding="utf-8", newline="")
+    print("Pantalla en vivo: lista. Se abrirá sola al iniciar el programa.")
+
+
 def arreglar_final(raiz: pathlib.Path) -> None:
     archivo = raiz / "src" / "bootstrap" / "session.py"
     codigo = archivo.read_text(encoding="utf-8")
@@ -365,6 +467,7 @@ def main() -> int:
 
     arreglar_final(raiz)
     arreglar_audio(raiz)
+    instalar_pantalla(raiz)
     return 0
 
 
