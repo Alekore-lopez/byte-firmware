@@ -9,6 +9,19 @@
 
 #include "byte_faces.h"
 
+// Modo juego: lo que hace Byte cuando nadie le habla (mismos juegos del taller de ojos)
+enum ByteGame : uint8_t {
+    GAME_NONE,
+    GAME_MOSCA,     // un puntito vuela y los ojos lo persiguen
+    GAME_PONG,      // una pelotita rebota de un ojo al otro
+    GAME_SALTITOS,  // los ojos saltan y caen aplastaditos
+    GAME_BIZCO,     // junta los ojos en el centro y los suelta de golpe
+    GAME_VUELTA,    // los ojos dan una vuelta completa
+    GAME_SILBANDO,  // mira hacia arriba y salen notas musicales
+};
+constexpr int kGameCount = 6;
+constexpr uint32_t kGameMs = 6000;  // cada juego dura 6 s y se acaba solo
+
 class ByteFaceRenderer {
 public:
     // width/height: tamaño de la pantalla en píxeles
@@ -20,6 +33,14 @@ public:
 
     // Mientras Byte habla se añade la boca de barras a cualquier expresión
     void SetTalking(bool talking) { talking_ = talking; }
+
+    // Modo juego: empieza un juego (dura kGameMs y se acaba solo) o lo corta ya
+    void StartGame(ByteGame game, uint32_t now_ms);
+    void StopGame() { game_ = GAME_NONE; }
+    ByteGame game() const { return game_; }
+
+    // Sueño: 0 = despierto, 1 = párpados cerrados (y bosteza de vez en cuando)
+    void SetSleepy(float sleepy) { sleepy_ = sleepy; }
 
     // Avanza la animación. Devuelve true y el área a repintar si algo cambió.
     bool Update(uint32_t now_ms, lv_area_t* dirty);
@@ -53,6 +74,23 @@ private:
     uint32_t next_gaze_ = 0;
     bool talking_ = false;
 
+    // Modo juego y sueño
+    ByteGame game_ = GAME_NONE;
+    uint32_t game_start_ = 0;
+    float sleepy_ = 0;
+    bool last_play_ = false;  // ¿el cuadro anterior tenía juego o sueño? (para borrarlo)
+    // Lo que el juego le hace a la cara en este cuadro (coordenadas del diseño)
+    struct Play {
+        float env = 0;                    // 0..1: entra y sale suave
+        float t = 0;                      // segundos desde que empezó el juego
+        float dx[2] = {}, dy[2] = {};     // cuánto se mueve cada ojo
+        float sx[2] = {1, 1}, sy[2] = {1, 1};  // cuánto se estira o aplasta
+        float fly_x = 0, fly_y = 0;       // la mosca
+        float ball_x = 0, ball_y = 0;     // la pelotita
+        float yawn = 0;                   // 0..1 qué tan abierta la boca del bostezo
+        float lid = 0;                    // 0..1 cuánto tapan los párpados
+    } play_;
+
     // Lo que se pintó en el cuadro anterior
     lv_area_t last_area_ = {};
     uint32_t last_signature_ = 0;
@@ -65,12 +103,15 @@ private:
         float cx, cy, w, h, r, lid_top, lid_bot, beat, blink;
         float moon;    // Eclipse: cuánto se corre la luna (px, con signo)
         float corona;  // Eclipse: latido de la corona (1 = normal)
+        float sleep;   // Sueño: cuánto del ojo tapa el párpado (0..1)
     } frame_eyes_[2] = {};
     uint16_t frame_acc_in_ = 0, frame_acc_out_ = 0;
 
     static Eye ToEye(const byte_eye_t& e);
     uint16_t EffectiveAcc(const byte_face_t* face) const;
+    void ComputePlay();
     void ComputeFrame();
+    void PlayArea(lv_area_t* area) const;
     void EyesArea(lv_area_t* area) const;
     void AccArea(int index, lv_area_t* area) const;
 
@@ -80,4 +121,5 @@ private:
     void DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side) const;
     void DrawEclipse(lv_layer_t* layer, const EyeOnScreen& e, float h) const;
     void DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const;
+    void DrawPlay(lv_layer_t* layer) const;
 };
