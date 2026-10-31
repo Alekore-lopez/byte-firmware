@@ -213,6 +213,50 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 .rise.d1{animation-delay:.08s}.rise.d2{animation-delay:.16s}.rise.d3{animation-delay:.24s}
 @keyframes rise{from{transform:translateY(16px)}to{transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Pastilla del héroe hacia la sección Casa */
+.homechip{align-self:flex-start;display:inline-flex;align-items:center;gap:10px;padding:9px 16px 9px 10px;border-radius:99px;border:1px solid color-mix(in srgb,var(--eye) 40%,transparent);background:color-mix(in srgb,var(--eye) 7%,transparent);text-decoration:none;font-weight:600;font-size:14.5px;box-shadow:0 0 22px color-mix(in srgb,var(--eye) 16%,transparent)}
+.homechip i{font-style:normal;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--eye);color:#14120e}
+.homechip i svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.homechip span{color:var(--mist);font-weight:500}
+/* Casa inteligente */
+.casa{background:radial-gradient(60% 50% at 70% 40%,color-mix(in srgb,var(--eye) 7%,transparent),transparent 70%)}
+.home{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:stretch}
+.room{position:relative;border-radius:28px;border:1px solid var(--line);background:#0c0c11;overflow:hidden;min-height:280px}
+.room svg{display:block;width:100%;height:100%}
+.room .sim{position:absolute;top:14px;left:14px;font-family:var(--f-mono);font-size:11.5px;color:var(--ambar);border:1px solid color-mix(in srgb,var(--ambar) 45%,transparent);background:#0c0c11cc;padding:3px 9px;border-radius:99px}
+.room .say{position:absolute;left:14px;right:14px;bottom:14px;background:#0c0c11e6;border:1px solid var(--line);border-radius:16px;padding:10px 14px;font-size:14.5px;min-height:44px}
+.room .say b{color:var(--eye)}
+.cmds{display:flex;flex-direction:column;gap:10px}
+.cmds button{display:flex;align-items:center;gap:12px;text-align:left;padding:14px 16px;border-radius:18px;border:1px solid var(--line);background:var(--ink);font-weight:600;font-size:15.5px;transition:border-color .2s,box-shadow .2s,transform .2s}
+.cmds button:hover,.cmds button.on{border-color:var(--eye);box-shadow:0 0 22px color-mix(in srgb,var(--eye) 22%,transparent);transform:translateY(-1px)}
+.cmds button i{font-style:normal;flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:var(--ink-2);color:var(--eye)}
+.cmds button i svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cmds .note{font-size:13.5px;color:var(--mist);margin-top:4px}
+.devs{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+.devs div{background:var(--ink);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.devs b{font-family:var(--f-display);font-size:16px}
+.devs span{font-size:13.5px;color:var(--mist)}
+@media (max-width:900px){.home{grid-template-columns:1fr}.devs{grid-template-columns:1fr 1fr}}
+#fan{transform-origin:316px 168px}
+.fan-on #fan{animation:spin .5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Galería de renders */
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:28px}
+.gal button{padding:0;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:#141312;text-align:left;display:flex;flex-direction:column;transition:border-color .2s,transform .2s}
+.gal button:hover{border-color:var(--eye);transform:translateY(-2px)}
+.gal img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover}
+.gal span{padding:10px 12px 12px;font-size:13.5px;color:var(--mist)}
+.gal span b{display:block;color:var(--fog);font-size:14.5px}
+.galnote{margin-top:12px;font-size:13px;color:var(--mist)}
+@media (max-width:900px){.gal{grid-template-columns:1fr 1fr}}
+dialog.lb{border:0;padding:0;background:transparent;max-width:min(1100px,94vw);width:100%}
+dialog.lb::backdrop{background:#000d}
+dialog.lb img{width:100%;height:auto;max-height:82vh;object-fit:contain;border-radius:18px;display:block}
+dialog.lb p{color:var(--fog);text-align:center;margin-top:10px;font-size:15px}
+dialog.lb .x{position:absolute;top:10px;right:10px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#000a;color:#fff;font-size:20px}
+dialog.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:#000a;color:#fff;font-size:22px}
+dialog.lb .prev{left:10px}dialog.lb .next{right:10px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
@@ -222,7 +266,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
   <div class="wrap">
     <a class="brand" href="#inicio" aria-label="Byte, inicio"><i aria-hidden="true"><b></b><b></b></i>Byte</a>
     <nav aria-label="Secciones">
-      <a href="#personalidad">Personalidad</a><a href="#dia">Un día con Byte</a><a href="#porque">Por qué Byte</a><a href="#diseno">Diseño</a><a href="#vamos">Así vamos</a><a href="#preguntas">Preguntas</a>
+      <a href="#personalidad">Personalidad</a><a href="#dia">Un día con Byte</a><a href="#casa">Casa</a><a href="#porque">Por qué Byte</a><a href="#diseno">Diseño</a><a href="#vamos">Así vamos</a><a href="#preguntas">Preguntas</a>
     </nav>
     <a class="go" href="#demo">Háblale</a>
   </div>
@@ -240,6 +284,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
           <a class="btn main" href="#demo"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>Háblale a Byte</a>
           <a class="btn" href="#personalidad">Conoce su personalidad</a>
         </div>
+        <a class="homechip rise d3" href="#casa"><i><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6"/></svg></i>Pronto: luces, TV y enchufes con tu voz <span>→</span></a>
       </div>
       <div class="stage" id="stage1">
         <canvas id="c3d" aria-label="Byte en 3D: una nube negra con pantalla, dos ojos y dos piecitos" role="img"></canvas>
@@ -312,6 +357,50 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
     </div>
   </section>
 
+
+  <section class="st casa" id="casa" data-eye="#f2ede1">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Casa inteligente · viene en camino</p>
+        <h2>Y muy pronto, tu casa también le <span class="glow">hará caso.</span></h2>
+        <p class="lead">Byte se va a conectar con las luces, los enchufes y la TV de tu casa: se lo pides con la voz y él se encarga. Lo hará con Home Assistant, un sistema libre que corre en un mini PC dentro de tu casa, sin depender de la nube de otra empresa.</p>
+      </div>
+      <div class="home">
+        <div class="room" id="room">
+          <svg viewBox="0 0 400 260" role="img" aria-label="Sala simulada con lámpara, TV, ventilador y Byte sobre una mesa">
+            <defs><radialGradient id="lampg"><stop offset="0" stop-color="#ffe7b0" stop-opacity=".9"/><stop offset="1" stop-color="#ffe7b0" stop-opacity="0"/></radialGradient>
+            <linearGradient id="tvg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#6d5bd0"/><stop offset=".5" stop-color="#e86aa6"/><stop offset="1" stop-color="#ffb238"/></linearGradient></defs>
+            <rect width="400" height="260" fill="#16151c"/><rect y="200" width="400" height="60" fill="#1d1b22"/>
+            <rect x="150" y="38" width="88" height="70" rx="6" fill="#0d1424" stroke="#2a2a36" stroke-width="4"/><path d="M194 38v70M150 73h88" stroke="#2a2a36" stroke-width="3"/>
+            <circle id="glowL" cx="62" cy="96" r="120" fill="url(#lampg)"/>
+            <path d="M62 102v98M44 200h36" stroke="#3a3946" stroke-width="5" stroke-linecap="round"/><path d="M40 102h44l-10-34H50z" fill="#d9cfb8" id="shade"/>
+            <rect x="248" y="96" width="120" height="74" rx="6" fill="#0a0a0e" stroke="#2c2c38" stroke-width="5"/><rect id="tvs" x="254" y="102" width="108" height="62" rx="2" fill="#050507"/><path d="M296 175h24M308 170v6" stroke="#2c2c38" stroke-width="5" stroke-linecap="round"/>
+            <rect x="96" y="160" width="130" height="40" rx="14" fill="#2a2633"/><rect x="104" y="142" width="114" height="30" rx="12" fill="#332e3e"/>
+            <g id="fanw"><path d="M316 168v32M302 200h28" stroke="#3a3946" stroke-width="5" stroke-linecap="round"/><circle cx="316" cy="168" r="17" fill="none" stroke="#3a3946" stroke-width="3"/>
+            <g id="fan"><path d="M316 168l0-14a5 5 0 0 1 4 4zM316 168l12 7a5 5 0 0 1-6 2zM316 168l-12 7a5 5 0 0 1 2-6z" fill="#8a8796"/></g></g>
+            <rect x="0" y="0" width="400" height="260" fill="#000" id="dark" opacity="0"/>
+            <g transform="translate(176 176)"><path d="M10 22a10 10 0 0 1 1-19 12 12 0 0 1 22 0 9 9 0 0 1 1 19z" fill="#08080a" stroke="#f2ede1" stroke-opacity=".5"/><rect x="13" y="9" width="5" height="7" rx="2.5" fill="#f2ede1"/><rect x="25" y="9" width="5" height="7" rx="2.5" fill="#f2ede1"/><path d="M14 22v5M30 22v5" stroke="#08080a" stroke-width="3"/></g>
+          </svg>
+          <span class="sim">Simulación · viene en camino</span>
+          <p class="say" id="say" aria-live="polite">Toca una orden y mira qué haría Byte.</p>
+        </div>
+        <div class="cmds" id="cmds">
+          <button data-c="luz"><i><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></i>"Byte, apaga la luz de la sala"</button>
+          <button data-c="peli"><i><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/></svg></i>"Byte, modo película"</button>
+          <button data-c="fan"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7s2 5-2 7M14 12c4 0 7 1 7 4s-5 2-7-2M12 14c0 4-1 7-4 7s-2-5 2-7M10 12c-4 0-7-1-7-4s5-2 7 2"/></svg></i>"Byte, prende el ventilador"</button>
+          <button data-c="noche"><i><svg viewBox="0 0 24 24"><path d="M20 15A8 8 0 1 1 9 4a7 7 0 0 0 11 11z"/></svg></i>"Byte, buenas noches"</button>
+          <p class="note">Hoy Byte ya conversa, busca en internet, pone música y recuerda cosas. El control de la casa es el siguiente paso: necesita un mini PC en casa y lo estamos preparando.</p>
+        </div>
+      </div>
+      <div class="devs">
+        <div><b>Luces</b><span>Prende, apaga o baja la intensidad.</span></div>
+        <div><b>Enchufes</b><span>Ventilador, cafetera o lo que conectes.</span></div>
+        <div><b>TV</b><span>Prende la tele o arma el modo película.</span></div>
+        <div><b>Escenas</b><span>Una frase y todo cambia a la vez.</span></div>
+      </div>
+    </div>
+  </section>
+
   <section class="st" id="porque" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
@@ -348,6 +437,14 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
           <div class="spec"><b>Wi-Fi</b><span>micrófono y parlante integrados</span></div>
         </div>
       </div>
+      <div class="gal" id="gal">
+        <button data-i="0"><img src="galeria/frente.jpg" alt="Byte de frente: nube negra mate con pantalla y ojos Eclipse, sobre dos piecitos" loading="lazy" width="1600" height="1200"><span><b>De frente</b>Pantalla de 2,8" y sus ojos Eclipse.</span></button>
+        <button data-i="1"><img src="galeria/lado.jpg" alt="Byte en vista de tres cuartos, con el puerto USB-C en el costado" loading="lazy" width="1600" height="1200"><span><b>De lado</b>Volumen de nube y USB-C para cargar.</span></button>
+        <button data-i="2"><img src="galeria/atras.jpg" alt="Byte por detrás: tapa con cuatro tornillos, logo y rejilla del parlante" loading="lazy" width="1600" height="1200"><span><b>Por detrás</b>Tapa de 4 tornillos y rejilla del parlante.</span></button>
+        <button data-i="3"><img src="galeria/escritorio.jpg" alt="Byte armado sobre un escritorio de madera junto a una taza de café" loading="lazy" width="1600" height="1200"><span><b>En tu escritorio</b>Del tamaño de una taza de café.</span></button>
+      </div>
+      <p class="galnote">Renders del diseño que vamos a imprimir en 3D en PLA negro mate, con suelas de TPU. No son fotos: las medidas finales se ajustan cuando tengamos la placa en la mano.</p>
+      <dialog class="lb" id="lb"><button class="x" aria-label="Cerrar">×</button><button class="nav prev" aria-label="Anterior">‹</button><img alt=""><button class="nav next" aria-label="Siguiente">›</button><p></p></dialog>
     </div>
   </section>
 
@@ -604,10 +701,10 @@ function startHero(THREE) {
 /* ---------- Vista desarmada ---------- */
 function startDevice(THREE) {
   const canvas = $('#c3d2'), r = makeRenderer(THREE, canvas);
-  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 60); cam.position.set(0, 1.4, 10.5); cam.lookAt(0, 0, 0);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 60); cam.position.set(0, 1.6, 13); cam.lookAt(0, 0, 0);
   lights(THREE, scene);
   const root = new THREE.Group(); scene.add(root);
-  const shellMat = new THREE.MeshStandardMaterial({color: 0x2a2a34, roughness: .6, metalness: .05, transparent: true, opacity: .42, depthWrite: false});
+  const shellMat = new THREE.MeshStandardMaterial({color: 0x0b0b0e, roughness: .7, metalness: .05});
   const front = new THREE.Group(); front.add(cloudGroup(THREE, shellMat)); front.add(feetGroup(THREE, shellMat)); front.scale.set(1, 1, .55); root.add(front);
   const tex2 = new THREE.CanvasTexture(faceCanvas); tex2.encoding = THREE.sRGBEncoding;
   const screen = new THREE.Group();
@@ -622,17 +719,17 @@ function startDevice(THREE) {
   const back = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.9, .12), new THREE.MeshStandardMaterial({color: 0x1a1a21, roughness: .7})); root.add(back);
   const screws = [];
   [[-1.35, .7], [1.35, .7], [-1.35, -.7], [1.35, -.7]].forEach(([x, y]) => { const s = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .5, 12), new THREE.MeshStandardMaterial({color: 0xcfd4da, metalness: .9, roughness: .2})); s.rotation.x = Math.PI / 2; s.position.set(x, y, 0); root.add(s); screws.push(s); });
-  const st = {rx: .15, ry: -.9, idle: 0}; drag(canvas, st);
+  const st = {rx: .12, ry: -1.05, idle: 0}; drag(canvas, st);
   const slider = $('#explode');
   let ex = +slider.value / 100;
   const tick = now => {
     const t = now / 1000; fit(r, cam, canvas);
     ex += (+slider.value / 100 - ex) * .12;
     const k = ex * 1.4;
-    front.position.z = .2 + k * 1.2; screen.position.z = .55 + k * .55;
+    front.position.z = .2 + k * 2.4; screen.position.z = .55 + k * 1.2;
     pcb.position.z = .38 - k * 0; bat.position.z = .18 - k * .7; spk.position.set(0, -.75 - k * .5, .2 - k * .2);
-    back.position.z = -.25 - k * 1.5; screws.forEach(s => s.position.z = -.5 - k * 2.3);
-    st.idle++; if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .3) * .35 - .9 - st.ry) * .02;
+    back.position.z = -.25 - k * 2.0; screws.forEach(s => s.position.z = -.5 - k * 3.0);
+    st.idle++; if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .3) * .3 - 1.05 - st.ry) * .02;
     root.rotation.set(st.rx, st.ry, 0);
     r.render(scene, cam); requestAnimationFrame(tick);
   };
@@ -750,6 +847,46 @@ $('#copyLink').onclick = () => {
   const done = () => toast('Enlace copiado');
   if (navigator.clipboard) navigator.clipboard.writeText(PAGE_URL).then(done, () => toast(PAGE_URL)); else toast(PAGE_URL);
 };
+/* ---------- Casa simulada ---------- */
+(() => {
+  const room = $('#room'); if (!room) return;
+  const st = {luz: true, tv: false, fan: false};
+  const say = $('#say'), dark = $('#dark'), gl = $('#glowL'), tvs = $('#tvs'), shade = $('#shade');
+  const paint = () => {
+    gl.style.opacity = st.luz ? 1 : 0; shade.setAttribute('fill', st.luz ? '#f3e6c4' : '#4a4652');
+    dark.setAttribute('opacity', st.luz ? 0 : (st.tv ? .35 : .6));
+    tvs.setAttribute('fill', st.tv ? 'url(#tvg)' : '#050507');
+    room.classList.toggle('fan-on', st.fan && !reduce);
+  };
+  const ACT = {
+    luz: ['Byte, apaga la luz de la sala', 'Listo, apagué la luz de la sala.', () => { st.luz = false; }],
+    peli: ['Byte, modo película', 'Modo película: luces abajo y TV prendida. ¡Disfruta!', () => { st.luz = false; st.tv = true; }],
+    fan: ['Byte, prende el ventilador', 'Ventilador prendido. Avísame si quieres apagarlo.', () => { st.fan = true; }],
+    noche: ['Byte, buenas noches', 'Buenas noches, Alecore. Apagué todo.', () => { st.luz = false; st.tv = false; st.fan = false; }],
+  };
+  $$('#cmds button').forEach(b => b.addEventListener('click', () => {
+    const [q, a, fn] = ACT[b.dataset.c];
+    if (b.dataset.c === 'luz' && !st.luz) { st.luz = true; paint(); say.innerHTML = '<b>Byte:</b> Prendí la luz de la sala.'; return; }
+    $$('#cmds button').forEach(x => x.classList.toggle('on', x === b));
+    say.textContent = '"' + q + '"';
+    setTimeout(() => { fn(); paint(); say.innerHTML = '<b>Byte:</b> ' + a; }, reduce ? 0 : 650);
+  }));
+  paint();
+})();
+
+/* ---------- Galería con visor ---------- */
+(() => {
+  const lb = $('#lb'); if (!lb) return;
+  const items = $$('#gal button').map(b => ({src: b.querySelector('img').getAttribute('src'), alt: b.querySelector('img').alt, cap: b.querySelector('b').textContent}));
+  let i = 0;
+  const show = n => { i = (n + items.length) % items.length; const im = lb.querySelector('img'); im.src = items[i].src; im.alt = items[i].alt; lb.querySelector('p').textContent = items[i].cap; };
+  $$('#gal button').forEach(b => b.addEventListener('click', () => { show(+b.dataset.i); lb.showModal ? lb.showModal() : lb.setAttribute('open', ''); }));
+  lb.querySelector('.x').onclick = () => lb.close();
+  lb.querySelector('.prev').onclick = () => show(i - 1);
+  lb.querySelector('.next').onclick = () => show(i + 1);
+  lb.addEventListener('click', e => { if (e.target === lb) lb.close(); });
+  addEventListener('keydown', e => { if (!lb.open) return; if (e.key === 'ArrowLeft') show(i - 1); if (e.key === 'ArrowRight') show(i + 1); });
+})();
 })();
 </script>
 </body>
