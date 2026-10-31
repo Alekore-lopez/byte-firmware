@@ -18,11 +18,11 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#111412; --panel:#181c19; --ink:#e8ebe7; --muted:#9ba49e; --line:#2a302c;
-  --accent:#22d3ee; --accent-ink:#04252b; --chip:#1f2420; --rec:#69db7c;
+  --accent:#3ee6b0; --accent-ink:#04261c; --chip:#1f2420; --rec:#69db7c;
   --stage-a:#3b413d; --stage-b:#1d211e; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111412; --panel:#181c19; --ink:#e8ebe7; --muted:#9ba49e; --line:#2a302c;
-  --accent:#22d3ee; --accent-ink:#04252b; --chip:#1f2420; --rec:#69db7c;
+  --accent:#3ee6b0; --accent-ink:#04261c; --chip:#1f2420; --rec:#69db7c;
   --stage-a:#3b413d; --stage-b:#1d211e; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
@@ -203,23 +203,23 @@ html,body{background:#000;margin:0;height:100%;overflow:hidden}
 /* ---------- Cara animada (mismo diseño que el firmware: 240×240 escalado ×1,25) ---------- */
 const DEF = { shape: 'rect', w: 46, h: 62, r: 16, dx: 0, dy: 0, lidTop: 0, lidBot: 0 };
 const FACES = [
-  { id: 'reposo', name: 'Reposo', color: '#22d3ee', anim: 'breathe', gaze: 1 },
-  { id: 'escucha', name: 'Escucha', color: '#22d3ee', eye: { w: 50, h: 70, r: 18 }, acc: ['ring'], anim: 'listen' },
-  { id: 'pensando', name: 'Pensando', color: '#22d3ee', eye: { h: 44, dx: 12, dy: -16 }, acc: ['dots'], anim: 'think' },
-  { id: 'hablando', name: 'Hablando', color: '#22d3ee', eye: { h: 56 }, acc: ['mouth'], anim: 'talk', gaze: 1 },
-  { id: 'dormido', name: 'Dormido', color: '#0e7490', eye: { shape: 'closed' }, acc: ['zzz'], anim: 'sleep', blink: 0 },
+  { id: 'reposo', name: 'Reposo', color: '#3ee6b0', anim: 'breathe', gaze: 1 },
+  { id: 'escucha', name: 'Escucha', color: '#f2ede1', eye: { w: 50, h: 70, r: 18 }, acc: ['ring'], anim: 'listen' },
+  { id: 'pensando', name: 'Pensando', color: '#a78bfa', eye: { h: 44, dx: 12, dy: -16 }, acc: ['dots'], anim: 'think' },
+  { id: 'hablando', name: 'Hablando', color: '#ffb238', eye: { h: 56 }, acc: ['mouth'], anim: 'talk', gaze: 1 },
+  { id: 'dormido', name: 'Dormido', color: '#6366f1', eye: { shape: 'closed' }, acc: ['zzz'], anim: 'sleep', blink: 0 },
   { id: 'wifi', name: 'Sin Wi-Fi', color: '#fb923c', eye: { w: 40, h: 48, r: 14, dy: -10 }, acc: ['wifi'], anim: 'breathe' },
   { id: 'mute', name: 'Mic apagado', color: '#ef4444', eye: { h: 30, r: 12, dy: -6 }, acc: ['mic'], anim: 'breathe', blink: 0 },
   { id: 'exito', name: 'Éxito', color: '#4ade80', eye: { shape: 'arc' }, acc: ['check'], anim: 'hop' },
   { id: 'feliz', name: 'Feliz', color: '#facc15', eye: { h: 56, lidBot: .42 }, anim: 'breathe', gaze: 1 },
-  { id: 'risa', name: 'Risa', color: '#facc15', eye: { shape: 'arc', w: 50 }, acc: ['mouthOpen'], anim: 'laugh' },
+  { id: 'risa', name: 'Risa', color: '#a3e635', eye: { shape: 'arc', w: 50 }, acc: ['mouthOpen'], anim: 'laugh' },
   { id: 'carino', name: 'Cariño', color: '#f472b6', eye: { shape: 'heart', w: 50 }, anim: 'beat' },
-  { id: 'cool', name: 'Cool', color: '#22d3ee', eye: { h: 40, dy: -4 }, acc: ['glasses'], anim: 'breathe', blink: 0 },
-  { id: 'sorpresa', name: 'Sorpresa', color: '#e5f9ff', eye: { w: 56, h: 56, r: 28 }, acc: ['oMouth'], anim: 'none' },
-  { id: 'enfado', name: 'Enfado', color: '#ef4444', eye: { lidTop: 24 }, anim: 'shake' },
-  { id: 'tristeza', name: 'Tristeza', color: '#60a5fa', eye: { h: 56, dy: 8, lidTop: -20 }, acc: ['tear'], anim: 'sad' },
-  { id: 'oops', name: 'Oops', color: '#fb923c', eye: { dx: -4 }, R: { h: 38, w: 42, dy: 8 }, acc: ['sweat'], anim: 'wobble' },
-  { id: 'guino', name: 'Guiño', color: '#22d3ee', R: { shape: 'arc', w: 46 }, anim: 'breathe', blink: 0 },
+  { id: 'cool', name: 'Cool', color: '#c0c7d4', eye: { h: 40, dy: -4 }, acc: ['glasses'], anim: 'breathe', blink: 0 },
+  { id: 'sorpresa', name: 'Sorpresa', color: '#e879f9', eye: { w: 56, h: 56, r: 28 }, acc: ['oMouth'], anim: 'none' },
+  { id: 'enfado', name: 'Enfado', color: '#e11d48', eye: { lidTop: 24 }, anim: 'shake' },
+  { id: 'tristeza', name: 'Tristeza', color: '#8e95b8', eye: { h: 56, dy: 8, lidTop: -20 }, acc: ['tear'], anim: 'sad' },
+  { id: 'oops', name: 'Oops', color: '#fdba74', eye: { dx: -4 }, R: { h: 38, w: 42, dy: 8 }, acc: ['sweat'], anim: 'wobble' },
+  { id: 'guino', name: 'Guiño', color: '#fb7185', R: { shape: 'arc', w: 46 }, anim: 'breathe', blink: 0 },
 ];
 const byId = Object.fromEntries(FACES.map(f => [f.id, f]));
 const eyeOf = (f, side) => Object.assign({}, DEF, f.eye || {}, side === 'R' ? (f.R || {}) : (f.L || {}));
@@ -311,7 +311,7 @@ const $ = id => document.getElementById(id);
 const stage = $('stage'), device = $('device'), canvas = $('screen');
 const ctx = canvas.getContext('2d'); fc = ctx;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const C = { text: '#e6eaee', muted: '#8a939b', dim: '#5b636b', panel: '#14171b', chip: '#1e2228', cyan: '#22d3ee', red: '#ef4444', purple: '#a78bfa', orange: '#fb923c', green: '#4ade80' };
+const C = { text: '#e6eaee', muted: '#8a939b', dim: '#5b636b', panel: '#14171b', chip: '#1e2228', accent: '#3ee6b0', red: '#ef4444', purple: '#a78bfa', orange: '#fb923c', green: '#4ade80' };
 const FONT = '"IBM Plex Sans", system-ui, sans-serif';
 
 /* ---------- Estado del dispositivo ---------- */
@@ -389,7 +389,7 @@ const hits = [];
 const hit = (x, y, w, h, fn, drag) => hits.push({ x, y, w, h, fn, drag });
 
 // Iconos sencillos de línea
-function icon(name, x, y, s = 1, color = C.cyan) {
+function icon(name, x, y, s = 1, color = C.accent) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.beginPath();
   if (name === 'clock') { ctx.arc(0, 0, 10, 0, 7); ctx.moveTo(0, -6); ctx.lineTo(0, 0); ctx.lineTo(4, 3); ctx.stroke(); }
@@ -447,7 +447,7 @@ function drawHome(now) {
     lines.slice(first, first + 2).forEach((l, i) => text(l, 160, 205 + i * 18, 13.5, S.dev === 'speaking' ? C.text : C.muted));
   } else if (S.timer.running) {
     const m = Math.ceil(timerLeft(now) / 1000), t = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-    ctx.fillStyle = C.panel; rrect(124, 204, 72, 24, 12); ctx.fill(); icon('timer', 140, 216, .6, C.cyan); text(t, 170, 216, 12.5, C.cyan, 'center', 600);
+    ctx.fillStyle = C.panel; rrect(124, 204, 72, 24, 12); ctx.fill(); icon('timer', 140, 216, .6, C.accent); text(t, 170, 216, 12.5, C.accent, 'center', 600);
   } else if (!S.sleeping) { ctx.fillStyle = '#3a4048'; rrect(146, 230, 28, 4, 2); ctx.fill(); }
   hit(0, 24, 320, 216, tapFace);
   if (S.timer.running && !msg) hit(124, 200, 72, 32, () => go('timer'));
@@ -466,7 +466,7 @@ function drawClock(now) {
   header('Reloj', () => go('menu'));
   const d = new Date();
   // Ojitos de Byte arriba, para que el reloj tenga su personalidad
-  const b = now % 4200 < 140 ? .2 : 1; ctx.fillStyle = C.cyan; rrect(141, 74 - 7 * b, 14, 14 * b, 5); ctx.fill(); rrect(165, 74 - 7 * b, 14, 14 * b, 5); ctx.fill();
+  const b = now % 4200 < 140 ? .2 : 1; ctx.fillStyle = C.accent; rrect(141, 74 - 7 * b, 14, 14 * b, 5); ctx.fill(); rrect(165, 74 - 7 * b, 14, 14 * b, 5); ctx.fill();
   const hm = d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }).replace(/\s?[ap]\.?\s?m\.?/i, '');
   text(hm, 160, 128, 58, C.text, 'center', 600);
   text(d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }), 160, 178, 14, C.muted);
@@ -477,13 +477,13 @@ function drawTimer(now) {
   header('Temporizador', () => go('menu'));
   const t = S.timer, left = timerLeft(now), p = t.total ? left / (t.total * 1000) : 0, s = Math.ceil(left / 1000);
   ctx.lineWidth = 6; ctx.strokeStyle = C.chip; ctx.beginPath(); ctx.arc(160, 124, 50, 0, 7); ctx.stroke();
-  ctx.strokeStyle = t.ringing ? C.orange : C.cyan; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(160, 124, 50, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke(); ctx.lineCap = 'butt';
+  ctx.strokeStyle = t.ringing ? C.orange : C.accent; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(160, 124, 50, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke(); ctx.lineCap = 'butt';
   text(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, 160, 124, 30, C.text, 'center', 600);
   if (!t.running) {
     [[52, '−', -60], [268, '+', 60]].forEach(([x, l, d]) => { ctx.fillStyle = C.chip; ctx.beginPath(); ctx.arc(x, 124, 20, 0, 7); ctx.fill(); text(l, x, 123, 22, C.text); hit(x - 26, 98, 52, 52, () => { t.total = Math.max(60, Math.min(3600, Math.round(t.left / 60000) * 60 + d)); t.left = t.total * 1000; beep([660], .03); }); });
     text('min', 52, 152, 10, C.dim); text('min', 268, 152, 10, C.dim);
   }
-  const pill = (x, w, label, primary, fn) => { ctx.fillStyle = primary ? C.cyan : C.chip; rrect(x - w / 2, 192, w, 32, 16); ctx.fill(); text(label, x, 208, 13.5, primary ? '#04252b' : C.text, 'center', 600); hit(x - w / 2, 188, w, 40, fn); };
+  const pill = (x, w, label, primary, fn) => { ctx.fillStyle = primary ? C.accent : C.chip; rrect(x - w / 2, 192, w, 32, 16); ctx.fill(); text(label, x, 208, 13.5, primary ? '#04252b' : C.text, 'center', 600); hit(x - w / 2, 188, w, 40, fn); };
   if (t.ringing) pill(160, 130, 'Detener', true, stopRing);
   else {
     pill(104, 96, 'Reiniciar', false, () => { t.running = false; t.left = t.total * 1000; log('ByteUi::StopTimer()'); });
@@ -505,7 +505,7 @@ function drawFaces() {
   hit(0, 70, 70, 150, () => { S.faceIdx = (S.faceIdx + FACES.length - 1) % FACES.length; log(`Vista previa de la cara "${FACES[S.faceIdx].name}"`); });
   hit(250, 70, 70, 150, () => { S.faceIdx = (S.faceIdx + 1) % FACES.length; log(`Vista previa de la cara "${FACES[S.faceIdx].name}"`); });
 }
-function toggle(x, y, on, color = C.cyan) { ctx.fillStyle = on ? color : '#3a4048'; rrect(x, y - 9, 32, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(on ? x + 23 : x + 9, y, 7, 0, 7); ctx.fill(); }
+function toggle(x, y, on, color = C.accent) { ctx.fillStyle = on ? color : '#3a4048'; rrect(x, y - 9, 32, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(on ? x + 23 : x + 9, y, 7, 0, 7); ctx.fill(); }
 function drawSettings() {
   header('Ajustes', () => go('menu'));
   const rows = [
@@ -524,7 +524,7 @@ function drawSettings() {
 }
 function drawWifi() {
   header('Wi-Fi', () => go('settings'));
-  icon('wifi', 160, 82, 2.2, S.wifi ? C.cyan : C.orange);
+  icon('wifi', 160, 82, 2.2, S.wifi ? C.accent : C.orange);
   text(S.wifi ? 'Conectado a "Casa"' : 'Sin conexión', 160, 124, 15, C.text, 'center', 600);
   text(S.wifi ? 'Señal buena' : 'Byte mostrará la cara de Wi-Fi', 160, 146, 12.5, C.muted);
   ctx.fillStyle = C.chip; rrect(80, 178, 160, 34, 17); ctx.fill(); text(S.wifi ? 'Desconectar (prueba)' : 'Conectar', 160, 195, 13, C.text, 'center', 600);
@@ -549,7 +549,7 @@ function drawQP(now) {
   const slider = (y, ic, val, set) => {
     icon(ic, 26, y, .9, C.text);
     ctx.fillStyle = '#2a2f36'; rrect(48, y - 11, 232, 22, 11); ctx.fill();
-    ctx.fillStyle = C.cyan; rrect(48, y - 11, Math.max(22, 232 * val / 100), 22, 11); ctx.fill();
+    ctx.fillStyle = C.accent; rrect(48, y - 11, Math.max(22, 232 * val / 100), 22, 11); ctx.fill();
     text(`${val}`, 296, y, 12, C.muted, 'center');
     hit(40, y0 + y - 18, 250, 36, x => set(Math.round(Math.max(0, Math.min(100, (x - 48) / 232 * 100)))), true);
   };
@@ -565,7 +565,7 @@ function drawHud(now) {
   ctx.save(); ctx.globalAlpha = a;
   ctx.fillStyle = 'rgba(20,23,27,.92)'; rrect(276, 54, 32, 140, 16); ctx.fill();
   ctx.fillStyle = '#2a2f36'; rrect(286, 64, 12, 100, 6); ctx.fill();
-  ctx.fillStyle = C.cyan; const hh = 100 * S.volume / 100; rrect(286, 164 - hh, 12, Math.max(6, hh), 6); ctx.fill();
+  ctx.fillStyle = C.accent; const hh = 100 * S.volume / 100; rrect(286, 164 - hh, 12, Math.max(6, hh), 6); ctx.fill();
   icon('speaker', 292, 180, .7, C.text);
   ctx.restore();
 }
@@ -761,7 +761,7 @@ function frame(now) {
   if (S.power === 'off') { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240); return; }
   if (S.power === 'boot') {
     const p = (now - S.bootT) / 1600; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240);
-    ctx.globalAlpha = Math.sin(Math.min(1, p) * Math.PI); ctx.font = `800 46px "Baloo 2", ${FONT}`; ctx.fillStyle = C.cyan; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Byte', 160, 116); ctx.globalAlpha = 1; return;
+    ctx.globalAlpha = Math.sin(Math.min(1, p) * Math.PI); ctx.font = `800 46px "Baloo 2", ${FONT}`; ctx.fillStyle = C.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Byte', 160, 116); ctx.globalAlpha = 1; return;
   }
   // temporizador
   const t = S.timer;
