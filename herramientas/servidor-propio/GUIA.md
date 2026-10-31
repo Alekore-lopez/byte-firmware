@@ -54,7 +54,21 @@ Crea en el escritorio **Byte** (la nube), **Revisar Byte** y **Apagar Byte**. "B
 ```
 iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/activar-memoria.ps1?v=$(Get-Random)" | iex
 ```
-Al terminar cada conversación, Gemini resume lo importante (nombres, gustos, fechas, pendientes) en `data\.memory.yaml`, que se queda solo en tu PC, y Byte lo lee en la siguiente. Cada dispositivo tiene su propia memoria: la placa empieza en blanco. Para que olvide todo, borra ese archivo y reinicia la central.
+Al terminar cada conversación, Gemini resume lo importante (nombres, gustos, fechas, pendientes) en `data\.memory.yaml`, que se queda solo en tu PC, y Byte lo lee en la siguiente. Para que olvide todo, borra ese archivo y reinicia la central.
+
+## Que aprenda tus gustos y te proponga cosas
+```
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/aprender-gustos.ps1?v=$(Get-Random)" | iex
+```
+Ojo: Byte **no se re-entrena** (Gemini es el mismo para todo el mundo). Lo que hace es llevar un **cuaderno** sobre ti, y cada vez que habla lo lee antes de contestar. Cuantas más conversaciones tengan, más completo queda el cuaderno.
+
+- **Qué anota** (al decir "suspéndete"): tus gustos (música, temas, comida), rutinas con hora, fechas, pendientes, qué hicieron la última vez y de 1 a 3 ideas para proponerte la próxima, todo con fecha (31-oct).
+- **Música:** cada vez que pone algo en Spotify lo anota en `data\.musica_reciente.json`. El cuaderno lo lee, y la herramienta `spotify_retomar` lo vuelve a poner ("sí, sigamos con la de ayer").
+- **Proactivo:** al despertarlo con "Byte", la central le pasa un "¡Hola, Byte!" (antes era un saludo en chino). Byte saluda según la hora y, si tiene algo reciente en el cuaderno, te lo propone en una pregunta.
+- **Una sola memoria para la casa** (clave `byte-casa`): lo que aprende ahora en el PC lo sabe la placa el día que la conectes. La primera vez copia la memoria que ya tenía el PC.
+- Puedes decirle "recuerda que…", "olvida que…" o preguntarle "¿qué sabes de mí?".
+
+Ver el cuaderno: `Get-Content $HOME\byte-servidor\data\.memory.yaml`. Volver a como estaba: renombra `.config.yaml.antes-de-gustos` y `.memory.yaml.antes-de-gustos` (quitando el final) y reinicia la central.
 
 ## Arreglos de la central (`parche_byte.py`)
 `docker-compose.yml` corre `data/parche_byte.py` antes de arrancar. Arregla tres cosas de la versión 0.9.8: las herramientas propias no cargaban (`'Tool' object has no attribute 'inputSchema'`), Gemini 3 rechazaba las herramientas (`missing a thought_signature`) y Whisper no sabía que hablas español. Si ya tenías la central instalada:
