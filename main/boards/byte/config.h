@@ -50,4 +50,10 @@
 #define DISPLAY_BACKLIGHT_OUTPUT_INVERT false
 #define DISPLAY_SPI_MODE      0
 
+// Táctil FT6336 (0x38): sus coordenadas vienen en vertical (240x320).
+// Si al tocar una esquina responde otra, cambiar estos valores.
+#define TOUCH_SWAP_XY         true
+#define TOUCH_MIRROR_X        false
+#define TOUCH_MIRROR_Y        false
+
 #endif  // _BOARD_CONFIG_H_
