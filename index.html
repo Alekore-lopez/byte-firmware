@@ -80,6 +80,7 @@ h2{text-shadow:0 0 40px color-mix(in srgb,var(--eye) 14%,transparent)}
 .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .stage{position:relative;aspect-ratio:1/1;width:100%;max-width:100%;border-radius:28px;background:radial-gradient(58% 52% at 50% 46%,color-mix(in srgb,var(--eye) 26%,transparent),transparent 72%);transition:background .6s}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
+#c3d{filter:drop-shadow(0 0 3px color-mix(in srgb,var(--eye) 80%,transparent)) drop-shadow(0 0 18px color-mix(in srgb,var(--eye) 45%,transparent)) drop-shadow(0 0 46px color-mix(in srgb,var(--eye) 25%,transparent))}
 .stage .hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-family:var(--f-mono);font-size:12px;color:var(--mist);white-space:nowrap}
 .fallback{position:absolute;inset:12% 8%;display:none;place-items:center}
 .no3d .fallback{display:grid}
@@ -564,6 +565,13 @@ function startHero(THREE) {
   const byte = new THREE.Group(); scene.add(byte);
   byte.add(cloudGroup(THREE, mat));
   const feet = feetGroup(THREE, mat); byte.add(feet);
+  // borde neón: cascarones un poco más grandes, vistos por detrás, que solo asoman en la silueta
+  const neon = new THREE.MeshBasicMaterial({color: 0xf2ede1, side: THREE.BackSide, transparent: true, opacity: .85, blending: THREE.AdditiveBlending, depthWrite: false});
+  const halo = new THREE.MeshBasicMaterial({color: 0xf2ede1, side: THREE.BackSide, transparent: true, opacity: .12, blending: THREE.AdditiveBlending, depthWrite: false});
+  const rim = new THREE.Group();
+  cloudGroup(THREE, neon).children.forEach(m => { m.scale.multiplyScalar(1.035); rim.add(m); });
+  cloudGroup(THREE, halo).children.forEach(m => { m.scale.multiplyScalar(1.1); rim.add(m); });
+  byte.add(rim);
   const tex = new THREE.CanvasTexture(faceCanvas); tex.encoding = THREE.sRGBEncoding;
   const bezel = new THREE.Mesh(roundedPanel(THREE, 1.72, 1.32, .2, .14), new THREE.MeshStandardMaterial({color: 0x030304, roughness: .45, metalness: 0}));
   bezel.position.set(0, .02, .74); byte.add(bezel);
@@ -583,7 +591,7 @@ function startHero(THREE) {
     const t = now / 1000; fit(r, cam, canvas);
     if (now > heroFaceUntil) heroFace = eyeFaceFor();
     drawFace(fctx, heroFace, t, {scale: 2, still: reduce}); tex.needsUpdate = true;
-    glow.color.set(heroFace.c);
+    glow.color.set(heroFace.c); neon.color.set(heroFace.c); halo.color.set(heroFace.c); neon.opacity = reduce ? .85 : .7 + .2 * Math.sin(t * 2);
     st.idle += 1;
     if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .35) * .45 - .1 - st.ry) * .02;
     byte.rotation.set(st.rx, st.ry, 0); byte.position.y = .3 + (reduce ? 0 : Math.abs(Math.sin(t * 1.6)) * .07);
