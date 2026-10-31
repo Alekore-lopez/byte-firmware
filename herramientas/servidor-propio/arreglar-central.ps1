@@ -2,7 +2,7 @@
 # Uso, en PowerShell (una sola linea):
 #   iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/refs/heads/claude/project-thread-oolb50/herramientas/servidor-propio/arreglar-central.ps1?v=$(Get-Random)" | iex
 # Que hace:
-#  1) Baja parche_byte.py y el docker-compose.yml nuevo (aplica el parche cada vez que arranca).
+#  1) Baja parche_byte.py y hace que docker-compose.yml lo aplique cada vez que arranca.
 #  2) Apaga las herramientas de ejemplo del servidor (clima chino, noticias chinas) y
 #     ajusta la personalidad para usar clima, noticias y buscar_en_internet.
 #  3) Recrea la central y muestra el registro.
@@ -28,8 +28,14 @@ if (-not (Test-Path $conf)) { throw "No encontre $conf. Primero corre configurar
 Write-Host ""
 Write-Host "=== 1) Bajando los arreglos ===" -ForegroundColor Cyan
 Bajar "parche_byte.py" (Join-Path $data "parche_byte.py")
-Copy-Item (Join-Path $dir "docker-compose.yml") (Join-Path $dir "docker-compose.yml.anterior") -Force -ErrorAction SilentlyContinue
-Bajar "docker-compose.yml" (Join-Path $dir "docker-compose.yml")
+$compose = Join-Path $dir "docker-compose.yml"
+$c = [IO.File]::ReadAllText($compose, $utf8)
+if ($c -notmatch "parche_byte") {
+  Copy-Item $compose "$compose.anterior" -Force
+  $c = $c.TrimEnd() + "`n    # Antes de arrancar aplica los arreglos de Byte (data/parche_byte.py)`n    command: [`"sh`", `"-c`", `"python data/parche_byte.py; exec python app.py`"]`n"
+  [IO.File]::WriteAllText($compose, $c, $utf8)
+}
+if ((Get-Content (Join-Path $data "parche_byte.py") -Raw) -notmatch "_byte_firmas_gemini") { throw "parche_byte.py llego incompleto. Espera 5 minutos y vuelve a intentar." }
 Write-Host "Listo." -ForegroundColor Green
 
 Write-Host ""
