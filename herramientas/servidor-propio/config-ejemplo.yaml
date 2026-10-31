@@ -41,7 +41,7 @@ LLM:
 TTS:
   EdgeTTS:
     type: edge
-    voice: es-CO-GonzaloNeural  # cámbiala por la que elijas con probar-voces.ps1
+    voice: es-CO-GonzaloNeural  # voz gratis de respaldo si no usas ElevenLabs
     pitch: 40                   # tono: más alto = más caricatura (en Hz)
     rate: 10                    # velocidad: +10 %
     language: "Español"
