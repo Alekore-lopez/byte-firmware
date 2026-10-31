@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace {
 
@@ -237,7 +238,7 @@ bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
         // Todos los valores ya vienen redondeados de ComputeFrame(): si la firma no
         // cambia, el dibujo sería idéntico al anterior y no hay que repintar
         for (float v : {e.cx, e.cy, e.w, e.h, e.r, e.lid_top, e.lid_bot, e.beat * 100, e.blink * 64,
-                        (float)e.shape}) {
+                        (float)e.shape, e.moon, e.corona * 32}) {
             sig = sig * 31 + (uint32_t)R(v);
         }
     }
@@ -292,6 +293,12 @@ void ByteFaceRenderer::ComputeFrame() {
         o.lid_bot = roundf(e.lid_bot);
         o.beat = roundf(anim.beat * 100) / 100;
         o.blink = target_->blink ? roundf(blink_ * 64) / 64 : 1;
+        // Eclipse: la luna va y viene despacio; al escuchar se corre para mostrar más sol
+        float sun = o.w * 0.27f;
+        bool listening = strcmp(target_->id, "escucha") == 0;
+        float swing = listening ? 0.55f : 0.25f * sinf(now_ * 0.0004f + i * 0.6f);
+        o.moon = roundf(sun * swing * (i == 0 ? -1 : 1));
+        o.corona = roundf((1 + 0.06f * sinf(now_ * 0.002f)) * 32) / 32;
     }
     frame_acc_in_ = EffectiveAcc(target_);
     frame_acc_out_ = acc_out_ & ~frame_acc_in_;
@@ -351,7 +358,7 @@ void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side
             // El parpadeo encoge el alto del ojo
             float h = std::max(5 * s, e.h * e.blink);
             float x1 = e.cx - e.w / 2, x2 = e.cx + e.w / 2;
-            FillRect(layer, x1, e.cy - h / 2, x2, e.cy + h / 2, R(e.r), color_, LV_OPA_COVER);
+            DrawEclipse(layer, e, h);
 
             // Párpado de arriba: un trapecio negro inclinado (enfado o tristeza)
             if (fabsf(e.lid_top) > 0.5f) {
@@ -387,6 +394,36 @@ void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side
             break;
         }
     }
+}
+
+// Ojo "Eclipse": la píldora queda oscura con un toque del color, adentro brilla
+// un sol con su corona y una luna negra lo tapa casi entero. Todo son círculos
+// que caben dentro de la píldora, así que no hace falta recortar nada.
+void ByteFaceRenderer::DrawEclipse(lv_layer_t* layer, const EyeOnScreen& e, float h) const {
+    const lv_color_t bg = lv_color_black();
+    float x1 = e.cx - e.w / 2, x2 = e.cx + e.w / 2;
+    // Fondo de la píldora: el color muy apagado (10 %)
+    FillRect(layer, x1, e.cy - h / 2, x2, e.cy + h / 2, R(e.r), lv_color_mix(color_, bg, 26),
+             LV_OPA_COVER);
+    float room = std::min(e.w, h) / 2 - 1;  // radio máximo que cabe en la píldora
+    float sun = std::min(e.w * 0.27f, room);
+    if (room < 6 * scale_) {
+        return;  // a mitad de un parpadeo no se ve el sol
+    }
+    // Corona: anillos del color, más transparentes hacia afuera, que laten
+    static const float kRing[] = {1.0f, 0.8f, 0.6f, 0.42f};
+    static const lv_opa_t kOpa[] = {36, 72, 128, 200};
+    for (int i = 0; i < 4; i++) {
+        float r = std::min(room, sun + (room - sun) * kRing[i] * e.corona);
+        FillEllipse(layer, e.cx, e.cy, r, r, color_, kOpa[i]);
+    }
+    // Sol: el color, con el centro un poco más claro
+    FillEllipse(layer, e.cx, e.cy, sun, sun, color_, LV_OPA_COVER);
+    FillEllipse(layer, e.cx, e.cy, sun * 0.8f, sun * 0.8f, lv_color_mix(lv_color_white(), color_, 70),
+                LV_OPA_COVER);
+    // Luna: un círculo negro un poco más grande que el sol, corrido a un lado
+    float moon = sun * 1.02f;
+    FillEllipse(layer, e.cx + e.moon, e.cy, moon, moon, bg, LV_OPA_COVER);
 }
 
 void ByteFaceRenderer::DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const {
