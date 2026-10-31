@@ -51,6 +51,8 @@ No hace falta fusionar a mano. El archivo [`.github/workflows/auto-merge.yml`](w
 
 Frenos de mano: un PR en **borrador** (draft) o con la etiqueta **`no-fusionar`** nunca se fusiona solo. Los PR que cambian archivos de `.github/workflows/` tampoco: GitHub exige que esos los fusione una persona con el botón verde.
 
+Después de fusionar, el bot borra la rama. Y el bot de limpieza [`limpiar-ramas.yml`](workflows/limpiar-ramas.yml) borra las ramas `claude/...` que ya están en `main` cada vez que se fusiona un PR (aunque sea a mano), todos los lunes, o cuando le des **Run workflow** en la pestaña Actions. Nunca toca `main`, `gh-pages` ni ramas con cambios sin fusionar.
+
 [Dependabot](dependabot.yml) revisa una vez al mes si hay versiones nuevas de las actions de los workflows y abre un PR si las hay.
 
 ## Primer arranque

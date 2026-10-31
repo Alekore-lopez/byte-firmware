@@ -1,0 +1,73 @@
+# Bot de limpieza: borra las ramas "claude/..." que ya se fusionaron a main.
+#
+# Cuándo corre:
+#   - Cada vez que se cierra un PR fusionado (aunque lo hayas fusionado tú a mano).
+#   - Todos los lunes, por si alguna se quedó.
+#   - Cuando quieras: pestaña Actions → "Limpiar ramas viejas" → "Run workflow".
+#
+# Solo borra una rama si se cumplen TODAS estas reglas:
+#   - Empieza por "claude/" (nunca toca main, gh-pages ni ramas tuyas).
+#   - Tiene un PR FUSIONADO cuyo último commit es exactamente el de la rama
+#     (o sea, nada de lo que hay en la rama se pierde).
+#   - No tiene otro PR abierto.
+# Si borras algo por error, en el PR fusionado aparece el botón "Restore branch".
+name: Limpiar ramas viejas
+
+on:
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: "0 13 * * 1"   # lunes 8:00 a. m. hora Colombia
+  workflow_dispatch:
+
+permissions:
+  contents: write       # para borrar ramas
+  pull-requests: read   # para ver qué PR se fusionaron
+
+concurrency:
+  group: limpiar-ramas
+  cancel-in-progress: false
+
+jobs:
+  limpiar:
+    name: Borrar ramas de Claude ya fusionadas
+    # En un PR cerrado, solo si se fusionó y viene de este mismo repo.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Revisar y borrar
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## 🧹 Limpieza de ramas" >> "$GITHUB_STEP_SUMMARY"
+          BORRADAS=0
+
+          for RAMA in $(gh api --paginate "repos/$GH_REPO/branches" --jq '.[].name' | grep '^claude/' || true); do
+            SHA=$(gh api "repos/$GH_REPO/branches/$RAMA" --jq .commit.sha)
+
+            ABIERTOS=$(gh pr list --state open --head "$RAMA" --json number --jq 'length')
+            if [ "$ABIERTOS" != "0" ]; then
+              echo "- \`$RAMA\`: tiene un PR abierto, se queda." >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            FUSIONADO=$(gh pr list --state merged --limit 100 --head "$RAMA" --json number,headRefOid \
+                        --jq "[.[] | select(.headRefOid == \"$SHA\")][0].number // empty")
+            if [ -z "$FUSIONADO" ]; then
+              echo "- \`$RAMA\`: tiene cambios sin fusionar, se queda." >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$RAMA"
+            echo "- \`$RAMA\`: borrada ✅ (ya estaba en main por el PR #$FUSIONADO)" >> "$GITHUB_STEP_SUMMARY"
+            BORRADAS=$((BORRADAS + 1))
+          done
+
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo "Ramas borradas: **$BORRADAS**" >> "$GITHUB_STEP_SUMMARY"
