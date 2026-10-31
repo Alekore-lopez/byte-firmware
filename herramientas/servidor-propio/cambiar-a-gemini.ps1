@@ -9,9 +9,10 @@ $f = Join-Path $HOME "byte-servidor\data\.config.yaml"
 if (-not (Test-Path $f)) { throw "No encuentro $f. Corre primero configurar.ps1" }
 
 do {
-  $g = (Read-Host "Pega tu clave de Gemini (empieza por AIza)").Trim()
-  if (-not $g.StartsWith("AIza")) { Write-Host "   Esa no parece una clave de Gemini. Intenta de nuevo." -ForegroundColor Red }
-} until ($g.StartsWith("AIza"))
+  $g = (Read-Host "Pega tu clave de Gemini (empieza por AIza o AQ.)").Trim()
+  $ok = ($g.Length -ge 20) -and -not $g.Contains(" ")
+  if (-not $ok) { Write-Host "   Esa no parece una clave de Gemini. Intenta de nuevo." -ForegroundColor Red }
+} until ($ok)
 
 Write-Host "Buscando modelos disponibles para tu clave..." -ForegroundColor Cyan
 $lista = (Invoke-RestMethod "https://generativelanguage.googleapis.com/v1beta/openai/models" -Headers @{ Authorization = "Bearer $g" }).data.id |
