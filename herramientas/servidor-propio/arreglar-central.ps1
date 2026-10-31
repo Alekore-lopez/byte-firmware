@@ -64,7 +64,7 @@ Write-Host ""
 Write-Host "=== 3) Recreando la central ===" -ForegroundColor Cyan
 $ErrorActionPreference = "Continue"
 Set-Location $dir
-docker compose up -d --force-recreate 2>&1 | Out-Host
+cmd /c "docker compose up -d --force-recreate 2>&1" | Out-Host
 Write-Host "Esperando 30 segundos..." -ForegroundColor Cyan
 Start-Sleep -Seconds 30
 docker logs --since 1m byte-servidor 2>&1 | Select-String -Pattern "parche_byte|byte-internet|buscar_en_internet|Error|ERROR" | Select-Object -Last 15
