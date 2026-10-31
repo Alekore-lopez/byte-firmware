@@ -16,7 +16,7 @@ selected_module:
   VAD: SileroVAD               # detecta cuándo hablas (local, gratis)
   ASR: GroqASR                 # OÍDO: convierte tu voz en texto (Whisper, entiende español)
   LLM: GroqLLM                 # CEREBRO: piensa la respuesta
-  TTS: EdgeTTS                 # BOCA: convierte el texto en voz (gratis)
+  TTS: EdgeTTS                 # BOCA: convierte el texto en voz. Cambia a ElevenLabsTTS cuando tengas tu voz diseñada
   Memory: nomem
   Intent: function_call
 
@@ -46,6 +46,23 @@ TTS:
     rate: 10                    # velocidad: +10 %
     language: "Español"
     output_dir: tmp/
+
+  ElevenLabsTTS:
+    # Voz diseñada por ti en elevenlabs.io (Voice Design).
+    # 1) Cambia TU_VOICE_ID en la url por el Voice ID de tu voz.
+    # 2) Cambia TU_CLAVE_DE_ELEVENLABS por tu API key (es secreta).
+    type: custom
+    method: POST
+    url: "https://api.elevenlabs.io/v1/text-to-speech/TU_VOICE_ID?output_format=mp3_44100_128"
+    params:
+      text: "{prompt_text}"
+      model_id: "eleven_flash_v2_5"   # rápido y gasta menos créditos
+      language_code: "es"
+    headers:
+      xi-api-key: "TU_CLAVE_DE_ELEVENLABS"
+    format: mp3
+    output_dir: tmp/
+    language: "Español"
 
 system_error_response: "Uy, Alecore, se me enredaron los cables. Intentemos otra vez en un momento."
 
