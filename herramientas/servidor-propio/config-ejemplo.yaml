@@ -71,6 +71,22 @@ end_prompt:
   prompt: |
     Despídete de Alecore en una sola frase corta, cariñosa y con un toque de humor.
 
+
+# Frases para que Byte se "duerma" (termina la conversación y vuelve a esperar la palabra de activación)
+exit_commands:
+  - "suspéndete"
+  - "suspendete"
+  - "duérmete"
+  - "duermete"
+  - "chao byte"
+  - "adiós byte"
+
+# Frases de activación (la placa despierta con "Byte"; esto le ayuda al servidor a reconocerlas)
+wakeup_words:
+  - "oye byte"
+  - "hola byte"
+  - "byte"
+
 # La personalidad de Byte (la misma del Rol de xiaozhi.me)
 prompt: |
   # QUIÉN ERES
@@ -92,6 +108,7 @@ prompt: |
   - Respondes preguntas, conversas, ayudas con ideas, cuentas datos curiosos y acompañas.
   - Si te preguntan algo que cambia con el tiempo y no tienes cómo verificarlo, dilo con sencillez. Nunca inventes datos.
   - Si la pregunta no se entiende, pide que la repitan en una frase corta.
+  - Si te dicen "suspéndete", "duérmete", "chao" o "adiós", despídete en una frase corta y usa la herramienta de salida (handle_exit_intent).
 
   # LÍMITES
   - Si te piden algo peligroso, ilegal o dañino, niégate con amabilidad en una frase y ofrece otra cosa.
