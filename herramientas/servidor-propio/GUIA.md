@@ -31,6 +31,12 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 ```
 > Antes del merge del PR, cambia `main` por `refs/heads/claude/project-thread-oolb50` en la dirección.
 
+## Búsqueda en internet (clima, noticias, buscar)
+```
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/activar-internet.ps1?v=$(Get-Random)" | iex
+```
+Instala `byte_internet.py` en `$HOME\byte-servidor\internet`, lo deja corriendo sin ventana en el puerto 8805 (solo en tu PC) y en el Inicio de Windows, crea `data\.mcp_server_settings.json` para que la central lo use, ajusta la personalidad y reinicia. No necesita claves: usa DuckDuckGo y Open-Meteo. Registro: `$HOME\byte-servidor\internet\registro.txt`.
+
 ## Conectar Byte
 - **py-xiaozhi (PC):** en `%LOCALAPPDATA%\py-xiaozhi\py-xiaozhi\config\config.json` pon `OTA_VERSION_URL = http://TU-IP:8003/xiaozhi/ota/` y `WEBSOCKET_URL = ws://TU-IP:8000/xiaozhi/v1/`.
 - **Placa:** al configurar el WiFi, en opciones avanzadas, pon la URL OTA. Si no aparece, cámbiala en `idf.py menuconfig` → *Default OTA URL* y vuelve a flashear.
@@ -48,3 +54,4 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 | `429 Rate limit ... tokens per minute` | Groq gratis: 8.000 tokens/min y cada turno usa ~6.000 | Usar Gemini como cerebro |
 | Byte dice "se me enredaron los cables" | Cualquier error del cerebro | Ver el registro |
 | `no longer available to new users` (Gemini) | Versión vieja del modelo | Usar la que sugiere el error |
+| Byte dice que no puede buscar | Las herramientas de internet no están corriendo | Volver a correr `activar-internet.ps1` |
