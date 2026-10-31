@@ -18,7 +18,7 @@ Write-Host "Buscando modelos disponibles para tu clave..." -ForegroundColor Cyan
 $lista = (Invoke-RestMethod "https://generativelanguage.googleapis.com/v1beta/openai/models" -Headers @{ Authorization = "Bearer $g" }).data.id |
          ForEach-Object { $_ -replace '^models/', '' }
 $flash = $lista | Where-Object { $_ -match 'flash' -and $_ -notmatch 'image|tts|audio|live|preview|exp|thinking|embedding' }
-$preferidos = @("gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash")
+$preferidos = @("gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3-flash-lite", "gemini-3-flash")
 $modelo = $null
 foreach ($p in $preferidos) { if ($flash -contains $p) { $modelo = $p; break } }
 if (-not $modelo) { $modelo = ($flash | Where-Object { $_ -match 'lite' } | Select-Object -First 1) }
