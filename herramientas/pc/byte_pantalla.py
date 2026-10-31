@@ -170,7 +170,7 @@ def arrancar_internet() -> subprocess.Popen | None:
             cwd=INTERNET,
             stdout=registro,
             stderr=subprocess.STDOUT,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            # Comparte la ventana negra de Byte.bat: si se cierra, también se cierra esto
         )
     except OSError as e:
         logger.warning(f"No pude arrancar byte-internet: {e}")
