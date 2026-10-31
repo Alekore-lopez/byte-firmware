@@ -1,70 +1,50 @@
-# Plan B: servidor propio de Byte (voz tipo caricatura)
+# Servidor propio de Byte (voz propia con ElevenLabs)
 
 ## La idea en una analogía
-Hoy Byte es como un teléfono que llama a una central en China (xiaozhi.me). La central tiene tres trabajadores: un **oído** (convierte tu voz en texto), un **cerebro** (piensa la respuesta) y una **boca** (convierte la respuesta en voz). Tú no puedes elegir a la boca, por eso solo hay dos voces.
-
-Con el plan B montamos **nuestra propia central en tu PC**. Ahí sí elegimos cada trabajador:
+Byte es como un teléfono que llama a una **central**. La central tiene tres trabajadores:
 
 | Trabajo | Pieza | Costo |
 |---|---|---|
-| Oído (ASR) | Whisper en Groq | Gratis con límite diario |
-| Cerebro (LLM) | Llama en Groq | Gratis con límite diario |
-| Boca (TTS) | Edge TTS de Microsoft, con tono y velocidad ajustables | Gratis, sin clave |
+| Oído (ASR): voz → texto | Whisper en **Groq** | Gratis con límite |
+| Cerebro (LLM): piensa la respuesta | **Google Gemini** (flash-lite) | Gratis con límite |
+| Boca (TTS): texto → voz | **ElevenLabs**, voz diseñada con Voice Design | Plan gratis con créditos al mes |
 
-El programa de la central es **xiaozhi-esp32-server**, un proyecto libre hecho justo para XiaoZhi.
+La central es **xiaozhi-esp32-server** (proyecto libre), y corre en Docker en tu PC.
 
-## Lo que cambia (léelo antes de empezar)
-- **Tu PC tiene que estar prendido** para que Byte funcione, también cuando llegue la placa. Si lo apagas, Byte se queda sin central.
-- La consola de xiaozhi.me deja de usarse: la personalidad y la voz ahora viven en el archivo `data/.config.yaml`.
-- Las herramientas de internet (`byte_internet.py`) hoy van conectadas a xiaozhi.me. Con la central propia hay que conectarlas de otra forma; eso lo hacemos en un paso posterior.
-- **Para volver atrás** basta con apuntar Byte otra vez a xiaozhi.me. No se pierde nada.
+**Lo que implica:** el PC tiene que estar prendido y con Docker abierto, y solo funciona dentro del WiFi de la casa. Para volver a xiaozhi.me, restaura `config.json.xiaozhi-me` en py-xiaozhi.
 
-## Paso 1: bajar todo y escuchar voces (5 minutos)
-Abre **PowerShell** y pega esta sola línea:
+## Requisitos (una sola vez)
+1. **Docker Desktop + WSL 2:** en PowerShell como administrador corre `wsl --install` y luego `winget install -e --id Docker.DockerDesktop`. Reinicia el PC.
+2. **Claves** (secretas, nunca en chats ni capturas):
+   - Groq: console.groq.com → API Keys (empieza por `gsk_`).
+   - ElevenLabs: Developers → API Keys (empieza por `sk_`; se muestra una sola vez).
+   - Gemini: aistudio.google.com/apikey (empieza por `AIza` o `AQ.`).
+3. **Voz:** ElevenLabs → Creación de voz → Diseño de voz. Descríbela con rasgos, no con nombres de personajes, y copia su **Voice ID**.
+
+## Instalar y arrancar
 ```
-iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/instalar.ps1?v=$(Get-Random)" | iex
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/configurar.ps1?v=$(Get-Random)" | iex
 ```
-Eso crea la carpeta `C:\Users\aleja\byte-servidor` con todos los archivos y después genera 8 audios en la carpeta `byte-voces`. Escúchalos y dime qué número te gustó.
-
-**Qué hace esa línea:** `iwr` (Invoke-WebRequest) descarga el instalador desde tu GitHub, e `iex` lo ejecuta. Es como pedirle a PowerShell "baja esta receta y cocínala". Solo hazlo con scripts en los que confíes, como los de tu propio repositorio.
-
-**Qué aprendes aquí:** el *tono* (pitch) se mide en Hz. Subirlo hace la voz más aguda, como un muñeco animado. La *velocidad* (rate) va en %, y un poco más rápido suena más animado.
-
-## Paso 2: sacar la clave de Groq (gratis)
-1. Entra a console.groq.com e inicia sesión (puedes usar GitHub o Google).
-2. Ve a **API Keys** y luego **Create API Key**. Ponle de nombre `byte`.
-3. Copia la clave (empieza por `gsk_`). **Es secreta, como una contraseña:** no la pegues en el chat ni en GitHub.
-
-## Paso 3: instalar Docker Desktop
-**Qué es Docker:** una "caja" que trae el programa ya armado con todo lo que necesita, para que no tengas que instalar Python, librerías, etc.
-1. Descarga Docker Desktop desde docker.com e instálalo. Acepta usar **WSL 2** si te lo pregunta.
-2. Reinicia el PC y abre Docker Desktop hasta que diga *Engine running*.
-
-## Paso 4: poner tus datos en la configuración
-El instalador ya creó la carpeta `byte-servidor` con `docker-compose.yml` y `data\.config.yaml`. Abre `data\.config.yaml` con VS Code (`code $HOME\byte-servidor\data\.config.yaml`) y cambia tres cosas:
-- Las dos líneas `PEGA_AQUI_TU_CLAVE_DE_GROQ` por tu clave.
-- `192.168.1.50` por la IP de tu PC. La ves con el comando `ipconfig`, en la línea "Dirección IPv4".
-- `voice`, `pitch` y `rate` por los de la voz que elegiste en el paso 1.
-
-Si vuelves a correr el instalador, tu `.config.yaml` no se borra.
-
-## Paso 5: arrancar
-En PowerShell:
+Te pide Groq, ElevenLabs, Voice ID e IP, escribe `data\.config.yaml` y arranca la central. Luego cambia el cerebro a Gemini:
 ```
-cd $HOME\byte-servidor
-docker compose up -d
-docker logs -f byte-servidor
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/cambiar-a-gemini.ps1?v=$(Get-Random)" | iex
 ```
-En el registro (log) debe aparecer una dirección **OTA** como `http://TU-IP:8003/xiaozhi/ota/`. Ábrela en el navegador: si responde, la central está viva. Para salir del log presiona Ctrl+C (la central sigue corriendo).
+> Antes del merge del PR, cambia `main` por `refs/heads/claude/project-thread-oolb50` en la dirección.
 
-## Paso 6: conectar Byte a tu central
-- **Hoy, con Byte en el PC (py-xiaozhi):** en su `config.json` cambia la dirección OTA (`OTA_VERSION_URL`) por la de tu central. Mándame captura del archivo y te señalo la línea exacta.
-- **El 8-nov, con la placa:** al configurar el WiFi de Byte, en opciones avanzadas, pon la misma dirección OTA. Si no aparece esa opción, la cambiamos en el firmware (`idf.py menuconfig`, luego *Xiaozhi Assistant* y *Default OTA URL*) y lo volvemos a flashear.
+## Conectar Byte
+- **py-xiaozhi (PC):** en `%LOCALAPPDATA%\py-xiaozhi\py-xiaozhi\config\config.json` pon `OTA_VERSION_URL = http://TU-IP:8003/xiaozhi/ota/` y `WEBSOCKET_URL = ws://TU-IP:8000/xiaozhi/v1/`.
+- **Placa:** al configurar el WiFi, en opciones avanzadas, pon la URL OTA. Si no aparece, cámbiala en `idf.py menuconfig` → *Default OTA URL* y vuelve a flashear.
 
-## Si algo falla
-- `docker` no se reconoce: Docker Desktop no está abierto, o falta reiniciar el PC.
-- Byte responde en chino: revisa que `language: "Español"` esté en EdgeTTS y que la personalidad esté pegada.
-- Error de modelo en Groq: cambia `model_name` por uno de la lista en console.groq.com/docs/models.
-- Edge TTS falla seguido: apaga cualquier VPN.
+## Comandos útiles
+- Ver errores: `docker logs --since 3m byte-servidor 2>&1 | Select-String -NotMatch "inputSchema|mcp" | Select-Object -Last 30`
+- Reiniciar después de editar la configuración: `docker restart byte-servidor`
+- Apagar: `cd $HOME\byte-servidor; docker compose down`
 
-Fuente del servidor: github.com/xinnan-tech/xiaozhi-esp32-server (configuración basada en su `config.yaml` actual).
+## Problemas que ya vimos
+| Síntoma en el registro | Causa | Arreglo |
+|---|---|---|
+| `401 Invalid API Key` en `asr` | Clave de Groq borrada o mal pegada | Clave nueva y reemplazar `gsk_...` |
+| `404 model ... does not exist` | Modelo retirado o sin acceso | Listar modelos y cambiar `model_name` |
+| `429 Rate limit ... tokens per minute` | Groq gratis: 8.000 tokens/min y cada turno usa ~6.000 | Usar Gemini como cerebro |
+| Byte dice "se me enredaron los cables" | Cualquier error del cerebro | Ver el registro |
+| `no longer available to new users` (Gemini) | Versión vieja del modelo | Usar la que sugiere el error |
