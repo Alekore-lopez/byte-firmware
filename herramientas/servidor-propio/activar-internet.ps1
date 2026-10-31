@@ -110,7 +110,7 @@ $texto = [IO.File]::ReadAllText($conf, $utf8)
 if ($texto -match "buscar_en_internet") {
   Write-Host "La personalidad ya menciona las herramientas."
 } else {
-  $linea = "  - Para clima, noticias, precios, resultados deportivos o cualquier dato actual, usa tus herramientas de internet (clima, noticias, buscar_en_internet) antes de responder. Si no las tienes o no encuentras nada, dilo con sencillez. Nunca inventes datos."
+  $linea = "  - Para el clima usa la herramienta clima, para noticias usa noticias y para cualquier otro dato actual usa buscar_en_internet, siempre antes de responder. Si no encuentras nada, dilo con sencillez. Nunca inventes datos."
   $nuevo = [regex]::Replace($texto, "(?m)^  - Si te preguntan algo que cambia con el tiempo[^\r\n]*", $linea)
   if ($nuevo -eq $texto) {
     Write-Host "No encontre la linea a cambiar; la agrego al final de QUE HACES." -ForegroundColor Yellow

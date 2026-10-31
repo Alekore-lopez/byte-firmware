@@ -37,6 +37,12 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 ```
 Instala `byte_internet.py` en `$HOME\byte-servidor\internet`, lo deja corriendo sin ventana en el puerto 8805 (solo en tu PC) y en el Inicio de Windows, crea `data\.mcp_server_settings.json` para que la central lo use, ajusta la personalidad y reinicia. No necesita claves: usa DuckDuckGo y Open-Meteo. Registro: `$HOME\byte-servidor\internet\registro.txt`.
 
+## Arreglos de la central (`parche_byte.py`)
+`docker-compose.yml` corre `data/parche_byte.py` antes de arrancar. Arregla tres cosas de la versión 0.9.8: las herramientas propias no cargaban (`'Tool' object has no attribute 'inputSchema'`), Gemini 3 rechazaba las herramientas (`missing a thought_signature`) y Whisper no sabía que hablas español. Si ya tenías la central instalada:
+```
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/arreglar-central.ps1?v=$(Get-Random)" | iex
+```
+
 ## Conectar Byte
 - **py-xiaozhi (PC):** en `%LOCALAPPDATA%\py-xiaozhi\py-xiaozhi\config\config.json` pon `OTA_VERSION_URL = http://TU-IP:8003/xiaozhi/ota/` y `WEBSOCKET_URL = ws://TU-IP:8000/xiaozhi/v1/`.
 - **Placa:** al configurar el WiFi, en opciones avanzadas, pon la URL OTA. Si no aparece, cámbiala en `idf.py menuconfig` → *Default OTA URL* y vuelve a flashear.
@@ -54,4 +60,6 @@ Instala `byte_internet.py` en `$HOME\byte-servidor\internet`, lo deja corriendo 
 | `429 Rate limit ... tokens per minute` | Groq gratis: 8.000 tokens/min y cada turno usa ~6.000 | Usar Gemini como cerebro |
 | Byte dice "se me enredaron los cables" | Cualquier error del cerebro | Ver el registro |
 | `no longer available to new users` (Gemini) | Versión vieja del modelo | Usar la que sugiere el error |
+| `missing a thought_signature` (Gemini) | La central no reenvía la firma de Gemini 3 | `arreglar-central.ps1` |
+| `'Tool' object has no attribute 'inputSchema'` | Error de la versión 0.9.8 | `arreglar-central.ps1` |
 | Byte dice que no puede buscar | Las herramientas de internet no están corriendo | Volver a correr `activar-internet.ps1` |

@@ -20,6 +20,7 @@ $dir  = Join-Path $HOME "byte-servidor"
 $data = Join-Path $dir "data"
 New-Item -ItemType Directory -Force -Path $data | Out-Null
 Bajar "docker-compose.yml" (Join-Path $dir "docker-compose.yml")
+Bajar "parche_byte.py" (Join-Path $data "parche_byte.py")
 $plantilla = Join-Path $data "config-ejemplo.yaml"
 Bajar "config-ejemplo.yaml" $plantilla
 
