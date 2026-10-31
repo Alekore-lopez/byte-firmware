@@ -2,6 +2,8 @@
 
 > **Tu escritorio tiene nueva personalidad.**
 
+[![Compilar Byte](https://github.com/Alekore-lopez/byte-firmware/actions/workflows/byte.yml/badge.svg)](https://github.com/Alekore-lopez/byte-firmware/actions/workflows/byte.yml)
+
 Byte es una nubecita negra con piecitos y un asistente de voz de escritorio. Te escucha cuando dices **"Byte"**, habla contigo en español y muestra caras en su pantalla.
 
 Este repositorio es una copia (fork) de [XiaoZhi ESP32](https://github.com/78/xiaozhi-esp32), un firmware libre con licencia MIT. Aquí guardamos el código de Byte, el historial de cambios y los `.bin` listos para cargar. La documentación original en inglés está en [README.md](../README.md).
@@ -34,6 +36,10 @@ python scripts/build.py byte --language es-ES --custom-wake-word byte
 
 El `.bin` queda en la carpeta `build/`. Para cargarlo, conecta la placa por USB-C y ejecuta `idf.py -p COMx flash` (cambia `COMx` por el puerto de tu placa).
 
+### Compilación automática (CI)
+
+Cada vez que algo llega a `main`, o se abre un pull request hacia `main`, GitHub compila Byte solo con el mismo comando de arriba (archivo [`.github/workflows/byte.yml`](workflows/byte.yml)). El resultado se ve en la pestaña **Actions** y como un check ✅ o ❌ en cada pull request. Si sale verde, el `.bin` listo para cargar se descarga desde la sección **Artifacts** de esa ejecución (se guarda 14 días).
+
 ## Primer arranque
 
 1. Al encender, Byte crea una red Wi-Fi propia. Conéctate a ella desde el celular y elige tu Wi-Fi de casa.
@@ -55,7 +61,7 @@ El `.bin` queda en la carpeta `build/`. Para cargarlo, conecta la placa por USB-
 | Palabra de activación "Byte" | ✅ Lista (falta probar en la placa) |
 | Caras de Byte a pantalla completa | ⏳ Pendiente |
 | Personalidad y voz en xiaozhi.me | ⏳ Pendiente |
-| Compilación automática del `.bin` en GitHub | ⏳ Pendiente |
+| Compilación automática del `.bin` en GitHub | ✅ Listo |
 | Prueba en la placa real (llega el 8 de noviembre de 2026) | ⏳ Pendiente |
 
 ## Licencia
