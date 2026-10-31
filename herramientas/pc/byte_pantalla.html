@@ -149,7 +149,7 @@ html,body{background:#000;margin:0;height:100%;overflow:hidden}
           <label class="row">Wi-Fi conectado <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="wifi" checked></span></label>
           <label class="row">Batería <input type="range" id="bat" min="0" max="100" value="85"></label>
           <label class="row">Cargando por USB-C <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="charge"></span></label>
-          <div class="row">5 minutos sin uso <button class="btn" id="idle5" type="button">Simular</button></div>
+          <div class="row">Modo juego: saltar a <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="go45" type="button">45 s</button><button class="btn" id="go3" type="button">3 min</button><button class="btn" id="go4" type="button">4 min</button></span></div>
           <label class="row">Probar con botones físicos <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="physical"></span></label>
         </div>
       </section>
@@ -248,12 +248,13 @@ function eclipse(c, cx, cy, w, h, side) {
   c.fillStyle = BG; c.beginPath(); c.arc(cx + sun * swing * (side === 'L' ? -1 : 1), cy, sun * 1.02, 0, 7); c.fill();
   c.fillStyle = col;
 }
-function drawEye(c, cx, cy, e, side, blink, beat) {
+function drawEye(c, cx, cy, e, side, blink, beat, lid = 0) {
   if (e.shape === 'rect') {
     const h = Math.max(5, e.h * blink), w = e.w, x = cx - w / 2, y = cy - h / 2;
     c.save(); rrc(c, x, y, w, h, e.r); c.clip(); eclipse(c, cx, cy, w, h, side); c.fillStyle = BG;
     if (Math.abs(e.lidTop) > .5) { const t = Math.tan(e.lidTop * Math.PI / 180) * (side === 'L' ? 1 : -1), y0 = cy - e.h / 2 + e.h * .28; c.beginPath(); c.moveTo(cx - w, y0 - t * w); c.lineTo(cx + w, y0 + t * w); c.lineTo(cx + w, cy - e.h); c.lineTo(cx - w, cy - e.h); c.fill(); }
     if (e.lidBot > .01) { const ry = w * .55; c.beginPath(); c.ellipse(cx, cy + h / 2 + ry + 2 - e.lidBot * e.h, w * .8, ry, 0, 0, Math.PI * 2); c.fill(); }
+    if (lid > .01) c.fillRect(x - 2, y - 2, w + 4, h * lid + 2);   // sueño: el párpado baja como una cortina
     c.restore();
   } else if (e.shape === 'arc') { c.save(); c.strokeStyle = c.fillStyle; c.lineWidth = 11; c.lineCap = 'round'; c.beginPath(); c.arc(cx, cy + e.w * .32, e.w * .46, Math.PI * 1.18, Math.PI * 1.82); c.stroke(); c.restore(); }
   else if (e.shape === 'closed') { c.save(); c.strokeStyle = c.fillStyle; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.arc(cx, cy - e.w * .1, e.w * .4, Math.PI * .2, Math.PI * .8); c.stroke(); c.restore(); }
@@ -285,6 +286,51 @@ function animOf(n, t) {
   else if (n === 'beat') { const p = (t % 900) / 900; o.beat = 1 + .12 * Math.max(0, Math.sin(p * Math.PI * 4)) * (p < .5 ? 1 : 0); }
   return o;
 }
+/* ---------- Modo juego: lo que hace Byte cuando nadie le habla ----------
+   Igual que ByteFaceRenderer::ComputePlay() del firmware: cada juego dura 6 s,
+   entra y sale suave, y mueve, estira o aplasta los ojos (medidas del diseño 240×240). */
+const GAMES = [
+  { id: 'mosca', name: 'La mosca' }, { id: 'pong', name: 'Ping-pong' }, { id: 'saltitos', name: 'Saltitos' },
+  { id: 'bizco', name: 'Bizco' }, { id: 'vuelta', name: 'Vuelta' }, { id: 'silbando', name: 'Silbando' },
+];
+const GAME_MS = 6000;
+const play = { game: null, t0: 0, sleepy: 0 };
+function computePlay(now) {
+  const p = { env: 0, t: 0, dx: [0, 0], dy: [0, 0], sx: [1, 1], sy: [1, 1], fly: null, ball: null, yawn: 0, lid: 0 };
+  if (play.game && now - play.t0 >= GAME_MS) play.game = null;   // se acabó el juego
+  if (play.game) {
+    const t = (now - play.t0) / 1000; p.t = t;
+    p.env = Math.min(1, t / .4, (GAME_MS / 1000 - t) / .4);       // entra y sale en 0,4 s
+    const g = play.game;
+    if (g === 'mosca') { const fx = 120 + Math.sin(t * 1.7) * 96, fy = 100 + Math.sin(t * 2.9) * 34; p.fly = [fx, fy]; [0, 1].forEach(i => { p.dx[i] = (fx - 120) / 96 * 9; p.dy[i] = (fy - 100) / 34 * 7; }); }
+    if (g === 'pong') { const q = (t * .9) % 2, u = q < 1 ? q : 2 - q, bx = 120 - 44 + u * 88; p.ball = [bx, 72 - Math.sin(u * Math.PI) * 22]; [0, 1].forEach(i => { p.dx[i] = (bx - 120) / 60 * 5; p.dy[i] = -3; }); if (Math.min(u, 1 - u) < .06) { const i = u < .5 ? 0 : 1; p.sx[i] = 1.15; p.sy[i] = .8; } }
+    if (g === 'saltitos') [0, 1].forEach(i => { const ph = (t * 2.2 + i * .5) % 1; p.dy[i] = -Math.sin(ph * Math.PI) * 22; if (ph < .08 || ph > .92) { p.sx[i] = 1.2; p.sy[i] = .75; p.dy[i] += st[i ? 'R' : 'L'].h * (1 - p.sy[i]) / 2; } });
+    if (g === 'bizco') { const c = t % 3, k = c > 2.2 ? 0 : Math.min(1, c / 1.2); p.dx = [k * 18, -k * 18]; }
+    if (g === 'vuelta') { const a = t * 2.2; [0, 1].forEach(i => { p.dx[i] = Math.cos(a) * 14; p.dy[i] = Math.sin(a) * 12; }); }
+    if (g === 'silbando') { p.dx = [4, 4]; p.dy = [-8, -8]; }
+    [0, 1].forEach(i => { p.dx[i] *= p.env; p.dy[i] *= p.env; p.sx[i] = 1 + (p.sx[i] - 1) * p.env; p.sy[i] = 1 + (p.sy[i] - 1) * p.env; });
+  }
+  if (play.sleepy > 0) {
+    // Cada 9 s bosteza: la boca se abre y se cierra en 2,7 s y los ojos se aprietan
+    const ph = (now % 9000) / 9000;
+    p.yawn = play.sleepy > .3 && ph < .3 ? Math.sin(ph / .3 * Math.PI) : 0;
+    p.lid = Math.min(.95, play.sleepy + p.yawn * .25);
+  }
+  return p;
+}
+function drawPlay(c, p, col) {
+  c.save(); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
+  if (p.fly) { const [fx, fy] = p.fly, wing = 1.2 + .6 * Math.abs(Math.sin(performance.now() / 25)); c.fillStyle = '#fff'; c.globalAlpha = p.env * .43; c.beginPath(); c.ellipse(fx - 3, fy - 3, 3, wing, 0, 0, 7); c.ellipse(fx + 3, fy - 3, 3, wing, 0, 0, 7); c.fill(); c.globalAlpha = p.env; c.beginPath(); c.arc(fx, fy, 2.6, 0, 7); c.fill(); }
+  if (p.ball) { c.fillStyle = '#fff'; c.globalAlpha = p.env; c.beginPath(); c.arc(p.ball[0], p.ball[1], 5, 0, 7); c.fill(); }
+  if (play.game === 'silbando') {
+    c.globalAlpha = p.env; c.beginPath(); c.arc(120, 182, 5, 0, 7); c.fill();
+    c.lineWidth = 2;
+    for (let k = 0; k < 3; k++) { const q = (p.t * .6 + k * .33) % 1, x = 176 + q * 30 + k * 5, y = 150 - q * 90; c.globalAlpha = (1 - q) * p.env; c.beginPath(); c.ellipse(x, y, 4.5, 3.5, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(x + 4, y); c.lineTo(x + 4, y - 14); c.lineTo(x + 10, y - 10); c.stroke(); }
+  }
+  if (p.yawn > 0) { c.globalAlpha = p.yawn; c.beginPath(); c.ellipse(120, 182, 9, 4 + 9 * p.yawn, 0, 0, 7); c.fill(); }
+  c.restore();
+}
+
 let fc = null, K = 1;   // fc: contexto del lienzo de la pantalla; K: píxeles reales por píxel de la pantalla 320×240
 let from = snap(byId.reposo), target = from, t0 = 0;
 const st = { ...snap(byId.reposo), k: 1, blink: 1, gx: 0, gy: 0, accOut: [] };
@@ -304,20 +350,26 @@ function drawFace(now) {
   if (k >= 1) st.accOut = [];
   if (now > nextBlink && blinkT < 0) blinkT = now;
   if (blinkT >= 0) { const p = (now - blinkT) / 150; st.blink = p < 1 ? Math.max(.08, Math.abs(1 - 2 * p)) : 1; if (p >= 1) { blinkT = -1; nextBlink = now + 2200 + Math.random() * 3200; } } else st.blink = 1;
-  if (target.face.gaze) { if (now > gazeT) { gazeTo = Math.random() < .4 ? [0, 0] : [(Math.random() * 2 - 1) * 11, (Math.random() * 2 - 1) * 6]; gazeT = now + 1200 + Math.random() * 2400; } } else gazeTo = [0, 0];
+  if (target.face.gaze && !play.game) { if (now > gazeT) { gazeTo = Math.random() < .4 ? [0, 0] : [(Math.random() * 2 - 1) * 11, (Math.random() * 2 - 1) * 6]; gazeT = now + 1200 + Math.random() * 2400; } } else gazeTo = [0, 0];
   st.gx += (gazeTo[0] - st.gx) * .18; st.gy += (gazeTo[1] - st.gy) * .18;
   if (tourOn && now > tourT) { const i = (FACES.indexOf(target.face) + 1) % FACES.length; setFace(FACES[i].id); tourT = now + 2600; }
 
-  const f = target.face, a = animOf(f.anim, now), css = `rgb(${st.col.map(Math.round)})`;
+  const f = target.face, a = animOf(f.anim, now), css = `rgb(${st.col.map(Math.round)})`, p = computePlay(now);
   fc.setTransform(K, 0, 0, K, 0, 0); fc.globalAlpha = 1; fc.fillStyle = BG; fc.fillRect(0, 0, 320, 240);
   // Igual que el firmware: centro x=160, ojos en y≈77, escala 1,25
   const SC = 1.25; fc.setTransform(SC * K, 0, 0, SC * K, (160 - 120 * SC) * K, (FACE_Y - 108 * SC) * K);
   fc.save(); fc.translate(120 + a.dx, CY + a.dy); fc.scale(a.s, a.s); fc.translate(-120, -CY);
   const blink = f.blink !== 0 ? st.blink : 1;
-  ['L', 'R'].forEach(side => { const e = st[side]; const cx = 120 + (side === 'L' ? -1 : 1) * 44 + e.dx + st.gx; const cy = CY + e.dy + st.gy; fc.fillStyle = css; drawEye(fc, cx, cy, e, side, blink, a.beat); });
+  ['L', 'R'].forEach((side, i) => {
+    const e = { ...st[side], w: st[side].w * p.sx[i], h: st[side].h * p.sy[i] };
+    const cx = 120 + (side === 'L' ? -1 : 1) * 44 + e.dx + st.gx + p.dx[i];
+    const cy = CY + e.dy + st.gy + p.dy[i] + play.sleepy * 4;   // con sueño mira un poco hacia abajo
+    fc.fillStyle = css; drawEye(fc, cx, cy, e, side, blink, a.beat, p.lid);
+  });
   fc.restore();
   st.accOut.forEach(x => drawAcc(fc, x, now, css, 1 - st.k, 88));
   (f.acc || []).forEach(x => drawAcc(fc, x, now, css, st.k, 88));
+  drawPlay(fc, p, css);
   fc.setTransform(K, 0, 0, K, 0, 0);
 }
 
@@ -342,7 +394,10 @@ const S = {
   timer: { total: 120, left: 120000, running: false, endAt: 0, ringing: 0 },
   faceIdx: 0,
 };
-const SLEEP_MS = 5 * 60 * 1000;
+// Modo juego (igual que byte_face_display.cc): 45 s juega, 3 min le da sueño, 4 min duerme
+const PLAY_MS = 45 * 1000, SLEEPY_MS = 3 * 60 * 1000, SLEEP_MS = 4 * 60 * 1000;
+const PHASE_NAME = ['atento', 'jugando', 'con sueño', 'dormido'];
+let phase = 0, nextGame = 0, lastGame = null;
 
 /* ---------- Registro del firmware ---------- */
 const logEl = $('log');
@@ -610,7 +665,7 @@ function setMuted(m) { S.muted = m; log(m ? '[función nueva] Micrófono apagado
 function setDnd(d) { S.dnd = d; log(d ? '[función nueva] No molestar: sin sonidos de aviso' : '[función nueva] No molestar desactivado', true); }
 function setWifi(w) { S.wifi = w; $('wifi').checked = w; if (!w) { log('WifiBoard: sin conexión → modo de configuración'); toast('Sin Wi-Fi'); } else { setDev('connecting'); setTimeout(() => { setDev('idle'); toast('Conectado'); beep([660, 990]); }, 1400); } }
 function applyBrightness() {
-  const b = S.power !== 'on' ? 0 : S.sleeping ? Math.min(S.brightness, 30) : S.brightness;
+  const b = S.power !== 'on' ? 0 : S.sleeping ? Math.min(S.brightness, 15) : S.brightness;
   canvas.style.filter = `brightness(${(.25 + .75 * b / 100).toFixed(2)})`;
   canvas.style.opacity = S.power === 'off' ? 0 : 1;
 }
@@ -674,7 +729,11 @@ $('physical').onchange = e => { ['bUp', 'bDown', 'bPow'].forEach(id => $(id).hid
 $('wifi').onchange = e => setWifi(e.target.checked);
 $('bat').oninput = e => { S.battery = +e.target.value; };
 $('charge').onchange = e => { S.charging = e.target.checked; if (S.power === 'on') toast(S.charging ? 'Cargando' : 'Desconectado del cargador'); };
-$('idle5').onclick = () => { if (S.power !== 'on') return; S.screen = 'home'; S.qpTo = 0; S.idleOffset = SLEEP_MS; log('Pasaron 5 min sin uso: Byte se duerme'); };
+// Saltar en el tiempo para ver el modo juego sin esperar
+[['go45', PLAY_MS], ['go3', SLEEPY_MS], ['go4', SLEEP_MS]].forEach(([id, ms]) => $(id).onclick = () => {
+  if (S.power !== 'on') return; S.screen = 'home'; S.qpTo = 0; S.expr = null;
+  S.idleOffset = ms - (performance.now() - S.lastTouch) + 50; log(`Saltamos a ${ms >= 60000 ? ms / 60000 + ' min' : ms / 1000 + ' s'} sin hablarle`);
+});
 
 /* ---------- Conversación: palabra "Byte" → escucha → piensa → habla ---------- */
 const CHIPS = ['¿Qué hora es?', 'Cuéntame un chiste', 'Sube el volumen', 'Pon un temporizador de 2 minutos', 'Baja el brillo', '¿Cómo estás?', 'Buenas noches'];
@@ -784,9 +843,21 @@ function frame(now) {
   if (t.running && now >= t.endAt) { t.running = false; t.left = 0; t.ringing = now; S.screen = 'timer'; S.qpTo = 0; S.sleeping = false; applyBrightness(); toast('¡Tiempo!', 4000); log('Display::ShowNotification("¡Tiempo!") + pitidos hasta 15 s'); }
   if (t.ringing && Math.floor((now - t.ringing) / 900) !== Math.floor((now - 16 - t.ringing) / 900)) beep([1046, 1318, 1046], .08);
   if (t.ringing && now - t.ringing > 15000) stopRing();
-  // dormir tras 5 min sin uso
+  // Modo juego: cuenta desde lo último que pasó (hablarle o tocarlo)
   const idleFor = now - S.lastTouch + S.idleOffset;
-  if (!S.sleeping && S.dev === 'idle' && !t.ringing && S.screen === 'home' && S.qpTo === 0 && idleFor > SLEEP_MS) { S.sleeping = true; applyBrightness(); log('Sin uso: cara "Dormido" y pantalla tenue'); }
+  const quiet = S.dev === 'idle' && !t.ringing && !(S.expr && now < S.exprUntil) && !S.muted && S.wifi && S.screen !== 'faces';
+  const ph = !quiet ? 0 : idleFor >= SLEEP_MS ? 3 : idleFor >= SLEEPY_MS ? 2 : idleFor >= PLAY_MS ? 1 : 0;
+  if (ph !== phase) { log(`[función nueva] Modo juego: ${PHASE_NAME[phase]} → ${PHASE_NAME[ph]}`, true); phase = ph; }
+  if (phase === 1 && S.screen === 'home' && S.qpTo === 0) {
+    if (now >= nextGame) {
+      // Al azar, pero nunca el mismo dos veces seguidas; uno nuevo cada 8 a 15 s
+      let g; do g = GAMES[Math.floor(Math.random() * GAMES.length)]; while (g.id === lastGame);
+      lastGame = g.id; play.game = g.id; play.t0 = now; nextGame = now + 8000 + Math.random() * 7000;
+      log(`Juego: ${g.name}`, true);
+    }
+  } else { nextGame = 0; if (phase === 0) play.game = null; }
+  play.sleepy = phase === 2 ? .95 * (idleFor - SLEEPY_MS) / (SLEEP_MS - SLEEPY_MS) : 0;
+  if ((phase === 3) !== S.sleeping) { S.sleeping = phase === 3; applyBrightness(); if (S.sleeping) log('Se durmió: cara "Dormido" y brillo al 15 %'); }
   // cara
   const want = chooseFace(now); if (want !== shownFace) { shownFace = want; setFace(want); }
   S.qp += (S.qpTo - S.qp) * (reduceMotion ? 1 : .22); if (Math.abs(S.qp - S.qpTo) < .01) S.qp = S.qpTo;
