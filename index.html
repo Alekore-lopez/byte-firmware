@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07070b">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://alekore-lopez.github.io/byte-firmware/">
+<meta property="og:url" content="https://oyebyte.pages.dev/">
+<link rel="canonical" href="https://oyebyte.pages.dev/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M18 50a12 12 0 0 1-2-24A17 17 0 0 1 49 24a13 13 0 0 1-1 26z' fill='%23111'/%3E%3Crect x='22' y='29' width='7' height='11' rx='3.5' fill='%233ee6b0'/%3E%3Crect x='35' y='29' width='7' height='11' rx='3.5' fill='%233ee6b0'/%3E%3C/svg%3E">
 <title>Byte · la nube que escucha</title>
 <meta name="description" content="Byte es una nube negra con cara, emociones y humor colombiano. Le dices &quot;Byte&quot; y te responde con su propia voz. Prototipo hecho en Colombia.">
@@ -386,7 +387,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
       <h2>Que decir "Byte" sea como llamar a alguien de la casa.</h2>
       <p class="lead">Si te gustó, compártelo con alguien a quien le encante la tecnología.</p>
       <div class="cta">
-        <a class="btn main" id="wa" href="https://wa.me/?text=Mira%20a%20Byte%2C%20una%20nube%20con%20cara%20que%20te%20escucha%20y%20te%20responde%3A%20https%3A%2F%2Falekore-lopez.github.io%2Fbyte-firmware%2F" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>Compartir por WhatsApp</a>
+        <a class="btn main" id="wa" href="https://wa.me/?text=Mira%20a%20Byte%2C%20una%20nube%20con%20cara%20que%20te%20escucha%20y%20te%20responde%3A%20https%3A%2F%2Foyebyte.pages.dev%2F" target="_blank" rel="noopener"><svg viewBox="0 0 24 24"><path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/></svg>Compartir por WhatsApp</a>
         <button class="btn" id="copyLink" type="button"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></svg>Copiar enlace</button>
       </div>
     </div>
@@ -718,7 +719,7 @@ new IntersectionObserver(es => es.forEach(e => dock.classList.toggle('hide', e.i
 /* ---------- Avisos ---------- */
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200); }
 
-const PAGE_URL = 'https://alekore-lopez.github.io/byte-firmware/';
+const PAGE_URL = 'https://oyebyte.pages.dev/';
 $('#copyLink').onclick = () => {
   const done = () => toast('Enlace copiado');
   if (navigator.clipboard) navigator.clipboard.writeText(PAGE_URL).then(done, () => toast(PAGE_URL)); else toast(PAGE_URL);
