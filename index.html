@@ -24,7 +24,7 @@
   --night:#07070b; --ink:#101018; --ink-2:#181823; --line:#262634;
   --fog:#efedf6; --mist:#a3a2b8;
   --menta:#3ee6b0; --lavanda:#a78bfa; --ambar:#ffb238; --blanco:#f2ede1; --coral:#fb7185; --rosa:#f472b6; --lima:#a3e635; --fucsia:#e879f9;
-  --eye:var(--menta);
+  --eye:var(--blanco); --neon:0 0 6px color-mix(in srgb,var(--eye) 70%,transparent),0 0 22px color-mix(in srgb,var(--eye) 45%,transparent),0 0 60px color-mix(in srgb,var(--eye) 25%,transparent);
   --f-display:"Unbounded","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
   --f-body:"Instrument Sans","Segoe UI",system-ui,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
@@ -42,19 +42,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 .wrap{max-width:1140px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .eyebrow{font-family:var(--f-mono);font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--eye);transition:color .6s}
 .lead{font-size:clamp(17px,2vw,20px);color:var(--mist);max-width:60ch}
-.glow{color:var(--eye);transition:color .6s;text-shadow:0 0 28px color-mix(in srgb,var(--eye) 45%,transparent)}
+.glow{color:var(--eye);transition:color .6s;text-shadow:var(--neon)}
+.eyebrow{text-shadow:0 0 14px color-mix(in srgb,var(--eye) 55%,transparent)}
+h2{text-shadow:0 0 40px color-mix(in srgb,var(--eye) 14%,transparent)}
 
 /* Barra superior */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--night) 80%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
 .top .wrap{display:flex;align-items:center;gap:18px;height:60px}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-size:19px;text-decoration:none}
 .brand i{display:inline-flex;gap:4px;padding:6px 8px;background:#000;border-radius:12px 12px 10px 10px;border:1px solid var(--line)}
-.brand i b{width:6px;height:10px;border-radius:4px;background:var(--eye);transition:background .6s;animation:parp 4.2s infinite}
+.brand i b{width:6px;height:10px;border-radius:4px;background:var(--eye);box-shadow:0 0 8px var(--eye),0 0 16px color-mix(in srgb,var(--eye) 50%,transparent);transition:background .6s;animation:parp 4.2s infinite}
 @keyframes parp{0%,94%,100%{transform:scaleY(1)}96%{transform:scaleY(.15)}}
 .top nav{display:flex;gap:2px;margin-left:auto}
 .top nav a{font-size:14px;font-weight:500;color:var(--mist);text-decoration:none;padding:6px 11px;border-radius:99px;white-space:nowrap}
 .top nav a:hover,.top nav a.on{color:var(--fog);background:var(--ink-2)}
-.top .go{margin-left:6px;padding:8px 14px;border-radius:99px;background:var(--eye);color:#06110d;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap;transition:background .6s}
+.top .go{margin-left:6px;padding:8px 14px;border-radius:99px;background:var(--eye);box-shadow:0 0 18px color-mix(in srgb,var(--eye) 50%,transparent);color:#14120e;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap;transition:background .6s}
 @media (max-width:900px){.top nav{display:none}.top .go{margin-left:auto}}
 
 /* Héroe */
@@ -73,9 +75,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .cta{display:flex;flex-wrap:wrap;gap:10px}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:13px 20px;border-radius:99px;border:1px solid var(--line);background:var(--ink);font-weight:700;font-size:15.5px;text-decoration:none;transition:border-color .2s,transform .2s,background .6s}
 .btn:hover{border-color:var(--eye);transform:translateY(-2px)}
-.btn.main{background:var(--eye);color:#06110d;border-color:transparent;box-shadow:0 10px 40px -12px var(--eye)}
+.btn.main{background:var(--eye);color:#14120e;border-color:transparent;box-shadow:0 0 0 1px color-mix(in srgb,var(--eye) 60%,transparent),0 0 24px color-mix(in srgb,var(--eye) 55%,transparent),0 0 70px color-mix(in srgb,var(--eye) 30%,transparent)}
+.btn.main:hover{box-shadow:0 0 0 1px var(--eye),0 0 30px color-mix(in srgb,var(--eye) 75%,transparent),0 0 90px color-mix(in srgb,var(--eye) 40%,transparent)}
 .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.stage{position:relative;aspect-ratio:1/1;width:100%;max-width:100%;border-radius:28px;background:radial-gradient(58% 52% at 50% 46%,color-mix(in srgb,var(--eye) 20%,transparent),transparent 72%);transition:background .6s}
+.stage{position:relative;aspect-ratio:1/1;width:100%;max-width:100%;border-radius:28px;background:radial-gradient(58% 52% at 50% 46%,color-mix(in srgb,var(--eye) 26%,transparent),transparent 72%);transition:background .6s}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
 .stage .hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-family:var(--f-mono);font-size:12px;color:var(--mist);white-space:nowrap}
 .fallback{position:absolute;inset:12% 8%;display:none;place-items:center}
@@ -105,7 +108,7 @@ section.st+section.st{border-top:1px solid var(--line)}
 .bigtalk{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:20px;border:1px solid var(--line);background:linear-gradient(135deg,var(--ink-2),var(--ink));text-align:left;transition:border-color .2s,transform .2s}
 .bigtalk:hover{border-color:var(--eye);transform:translateY(-2px)}
 .bigtalk .orb{flex:none;width:52px;height:52px;border-radius:50%;background:var(--eye);display:grid;place-items:center;box-shadow:0 0 0 0 color-mix(in srgb,var(--eye) 50%,transparent);animation:orb 2.2s infinite;transition:background .6s}
-.bigtalk .orb svg{width:22px;height:22px;stroke:#06110d;fill:none;stroke-width:2.2;stroke-linecap:round}
+.bigtalk .orb svg{width:22px;height:22px;stroke:#14120e;fill:none;stroke-width:2.2;stroke-linecap:round}
 @keyframes orb{70%{box-shadow:0 0 0 16px transparent}100%{box-shadow:0 0 0 0 transparent}}
 .bigtalk b{display:block;font-family:var(--f-display);font-size:18px}
 .bigtalk span{font-size:14px;color:var(--mist)}
@@ -143,7 +146,7 @@ section.st+section.st{border-top:1px solid var(--line)}
 .moment q{font-family:var(--f-display);font-weight:500;font-size:16px;line-height:1.3;quotes:"“" "”"}
 .moment p{font-size:14.5px;color:var(--mist)}
 .tag{align-self:flex-start;font-family:var(--f-mono);font-size:11.5px;padding:3px 9px;border-radius:99px;border:1px solid;margin-top:auto}
-.tag.ok{color:var(--menta);border-color:color-mix(in srgb,var(--menta) 45%,transparent)}
+.tag.ok{color:var(--eye);border-color:color-mix(in srgb,var(--eye) 45%,transparent)}
 .tag.next{color:var(--ambar);border-color:color-mix(in srgb,var(--ambar) 45%,transparent)}
 @media (max-width:1000px){.day{grid-template-columns:repeat(2,1fr)}.moment:last-child{grid-column:1/-1}}
 @media (max-width:560px){.day{grid-template-columns:1fr}}
@@ -162,7 +165,7 @@ section.st+section.st{border-top:1px solid var(--line)}
 .stage2{position:relative;aspect-ratio:5/4;max-width:100%;border-radius:28px;background:radial-gradient(70% 60% at 50% 50%,#15151f,var(--night));border:1px solid var(--line);overflow:hidden}
 .stage2 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
 .stage2 .ctrl{position:absolute;left:14px;right:14px;bottom:12px;display:flex;align-items:center;gap:12px;font-family:var(--f-mono);font-size:12px;color:var(--mist)}
-.stage2 input[type=range]{flex:1;accent-color:var(--menta);min-width:0}
+.stage2 input[type=range]{flex:1;accent-color:var(--eye);min-width:0}
 .specs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .spec{background:var(--ink);border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
 .spec b{font-family:var(--f-display);font-size:20px;font-weight:700}
@@ -171,14 +174,14 @@ section.st+section.st{border-top:1px solid var(--line)}
 
 /* Así vamos */
 .track{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative}
-.track::before{content:"";position:absolute;left:10%;right:10%;top:21px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--menta) 0 45%,var(--line) 45%)}
+.track::before{content:"";position:absolute;left:10%;right:10%;top:21px;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--eye) 0 45%,var(--line) 45%)}
 .stepx{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:0 8px}
 .stepx i{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--night);border:3px solid var(--line);font-style:normal;font-family:var(--f-mono);font-size:13px;z-index:1}
-.stepx.done i{border-color:var(--menta);background:var(--menta);color:#06110d}
+.stepx.done i{border-color:var(--eye);background:var(--eye);color:#14120e}
 .stepx.now i{border-color:var(--ambar);color:var(--ambar);box-shadow:0 0 0 6px color-mix(in srgb,var(--ambar) 18%,transparent);animation:latido 1.6s infinite}
 .stepx b{font-family:var(--f-display);font-size:15.5px}
 .stepx span{font-size:13.5px;color:var(--mist)}
-@media (max-width:760px){.track{grid-template-columns:1fr;gap:18px}.track::before{left:21px;right:auto;top:10px;bottom:10px;width:3px;height:auto;background:linear-gradient(180deg,var(--menta) 0 45%,var(--line) 45%)}.stepx{flex-direction:row;text-align:left;align-items:flex-start;gap:14px;padding:0}.stepx div{display:flex;flex-direction:column;gap:2px}}
+@media (max-width:760px){.track{grid-template-columns:1fr;gap:18px}.track::before{left:21px;right:auto;top:10px;bottom:10px;width:3px;height:auto;background:linear-gradient(180deg,var(--eye) 0 45%,var(--line) 45%)}.stepx{flex-direction:row;text-align:left;align-items:flex-start;gap:14px;padding:0}.stepx div{display:flex;flex-direction:column;gap:2px}}
 
 /* Preguntas */
 .faq{display:flex;flex-direction:column;gap:10px;max-width:820px}
@@ -225,7 +228,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
 </header>
 
 <main id="inicio">
-  <section class="hero" data-eye="#3ee6b0">
+  <section class="hero" data-eye="#f2ede1">
     <div class="wrap">
       <div class="copy">
         <span class="badge rise"><b></b>Prototipo en construcción · hecho en Colombia</span>
@@ -249,7 +252,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
     <div class="row" id="tape"></div>
   </div>
 
-  <section class="st" id="demo" data-eye="#ffb238">
+  <section class="st" id="demo" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
         <p class="eyebrow">Pruébalo aquí</p>
@@ -273,7 +276,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
     </div>
   </section>
 
-  <section class="st" id="personalidad" data-eye="#f472b6">
+  <section class="st" id="personalidad" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
         <p class="eyebrow">Personalidad</p>
@@ -291,7 +294,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
     </div>
   </section>
 
-  <section class="st" id="dia" data-eye="#a78bfa">
+  <section class="st" id="dia" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
         <p class="eyebrow">Un día con Byte</p>
@@ -301,14 +304,14 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
       <div class="day">
         <article class="moment" style="--c:var(--blanco)"><time>7:00 a. m.</time><q>Byte, ¿cómo está el día?</q><p>Te dice el clima y las noticias del momento, buscados en internet.</p><span class="tag ok">ya lo hace</span></article>
         <article class="moment" style="--c:var(--ambar)"><time>10:00 a. m.</time><q>Pon algo para concentrarme</q><p>Pone música en tu Spotify, la pausa o la cambia, solo con la voz.</p><span class="tag ok">ya lo hace</span></article>
-        <article class="moment" style="--c:var(--menta)"><time>1:00 p. m.</time><q>Acuérdate que me gusta el café sin azúcar</q><p>Lo guarda en su memoria y lo tiene en cuenta en las próximas charlas.</p><span class="tag ok">ya lo hace</span></article>
+        <article class="moment" style="--c:var(--eye)"><time>1:00 p. m.</time><q>Acuérdate que me gusta el café sin azúcar</q><p>Lo guarda en su memoria y lo tiene en cuenta en las próximas charlas.</p><span class="tag ok">ya lo hace</span></article>
         <article class="moment" style="--c:var(--lavanda)"><time>6:00 p. m.</time><q>Despiértame mañana a las 6</q><p>Alarmas, temporizadores y recordatorios en su pantalla.</p><span class="tag next">viene en camino</span></article>
         <article class="moment" style="--c:var(--coral)"><time>9:00 p. m.</time><q>Apaga la luz de la sala</q><p>Controlar luces, enchufes y la TV de la casa.</p><span class="tag next">viene en camino</span></article>
       </div>
     </div>
   </section>
 
-  <section class="st" id="porque" data-eye="#a3e635">
+  <section class="st" id="porque" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
         <p class="eyebrow">Por qué Byte</p>
@@ -317,13 +320,13 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
       <div class="why">
         <article style="--c:var(--rosa)"><span class="big">17</span><h3>Caras que reaccionan</h3><p>Escucha, piensa, se ríe, se sonroja o se duerme. Sabes qué está haciendo con solo mirarlo.</p></article>
         <article style="--c:var(--ambar)"><span class="big">"Byte"</span><h3>Sin botones</h3><p>Lo despiertas con su nombre. Esa palabra la reconoce el mismo dispositivo, sin mandar nada a internet.</p></article>
-        <article style="--c:var(--menta)"><span class="big">ES-CO</span><h3>Habla como tú</h3><p>Español de Colombia, tuteo y respuestas cortas, con una voz original creada solo para él.</p></article>
+        <article style="--c:var(--eye)"><span class="big">ES-CO</span><h3>Habla como tú</h3><p>Español de Colombia, tuteo y respuestas cortas, con una voz original creada solo para él.</p></article>
         <article style="--c:var(--lavanda)"><span class="big">Casa</span><h3>Su memoria vive contigo</h3><p>Lo que recuerda se guarda en un equipo de tu casa, no en la cuenta de una gran empresa.</p></article>
       </div>
     </div>
   </section>
 
-  <section class="st" id="diseno" data-eye="#3ee6b0">
+  <section class="st" id="diseno" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
         <p class="eyebrow">Diseño</p>
@@ -347,7 +350,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
     </div>
   </section>
 
-  <section class="st" id="vamos" data-eye="#ffb238">
+  <section class="st" id="vamos" data-eye="#f2ede1">
     <div class="wrap">
       <div class="head">
         <p class="eyebrow">Así vamos · octubre 2026</p>
@@ -380,7 +383,7 @@ footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
     </div>
   </section>
 
-  <section class="end" data-eye="#3ee6b0">
+  <section class="end" data-eye="#f2ede1">
     <div class="wrap">
       <p class="eyebrow">Hasta dónde queremos llegar</p>
       <h2>Que decir "Byte" sea como llamar a alguien de la casa.</h2>
@@ -489,7 +492,7 @@ function wrapText(ctx, txt, x, y, max, lh) {
 }
 
 /* ---------- Color de los ojos según la sección visible ---------- */
-let pageEye = '#3ee6b0';
+let pageEye = '#f2ede1';
 const setEye = c => { pageEye = c; document.documentElement.style.setProperty('--eye', c); };
 const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) setEye(e.target.dataset.eye); }), {rootMargin: '-45% 0px -50% 0px'});
 $$('[data-eye]').forEach(s => io.observe(s));
@@ -500,7 +503,8 @@ $$('section.st[id]').forEach(s => navIo.observe(s));
 let heroFace = byId.reposo, heroFaceUntil = 0;
 const faceCanvas = document.createElement('canvas'); faceCanvas.width = 640; faceCanvas.height = 480;
 const fctx = faceCanvas.getContext('2d');
-const eyeFaceFor = () => FACES.find(f => f.c === pageEye) || byId.reposo;
+const LUNA = {...byId.reposo, c: '#f2ede1'};
+const eyeFaceFor = () => pageEye === '#f2ede1' ? LUNA : (FACES.find(f => f.c === pageEye) || byId.reposo);
 
 function cloudGroup(THREE, mat) {
   const g = new THREE.Group();
@@ -511,7 +515,7 @@ function cloudGroup(THREE, mat) {
 
 function feetGroup(THREE, mat) {
   const g = new THREE.Group(), legs = [];
-  const sole = new THREE.MeshStandardMaterial({color: 0x3ee6b0, roughness: .5, emissive: 0x0b3a2c});
+  const sole = new THREE.MeshStandardMaterial({color: 0xf2ede1, roughness: .5, emissive: 0x4a463c});
   [-1, 1].forEach(sd => {
     const leg = new THREE.Group(); leg.position.set(sd * .62, -1.12, 0);
     const shin = new THREE.Mesh(new THREE.CylinderGeometry(.1, .12, .62, 20), mat); shin.position.y = -.3; leg.add(shin);
@@ -539,10 +543,10 @@ function fit(r, cam, canvas) {
   if (canvas.width !== Math.floor(w * r.getPixelRatio())) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
 }
 function lights(THREE, scene) {
-  scene.add(new THREE.HemisphereLight(0x9fa8ff, 0x0a0a10, .55));
+  scene.add(new THREE.HemisphereLight(0xdcd8ce, 0x0a0a10, .4));
   const k = new THREE.DirectionalLight(0xffffff, 1.1); k.position.set(3, 4, 5); scene.add(k);
-  const rim = new THREE.DirectionalLight(0x8b7bff, .9); rim.position.set(-4, 2, -4); scene.add(rim);
-  const rim2 = new THREE.DirectionalLight(0x3ee6b0, .5); rim2.position.set(4, -1, -3); scene.add(rim2);
+  const rim = new THREE.DirectionalLight(0xf2ede1, .9); rim.position.set(-4, 2, -4); scene.add(rim);
+  const rim2 = new THREE.DirectionalLight(0xf2ede1, .6); rim2.position.set(4, -1, -3); scene.add(rim2);
 }
 function drag(canvas, state) {
   let down = false, lx = 0, ly = 0, moved = 0;
@@ -565,7 +569,7 @@ function startHero(THREE) {
   bezel.position.set(0, .02, .74); byte.add(bezel);
   const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.56, 1.17), new THREE.MeshBasicMaterial({map: tex, toneMapped: false}));
   scr.position.set(0, .02, .925); byte.add(scr);
-  const glow = new THREE.PointLight(0x3ee6b0, .8, 4); glow.position.set(0, .1, 1.6); scene.add(glow);
+  const glow = new THREE.PointLight(0xf2ede1, .9, 4); glow.position.set(0, .1, 1.6); scene.add(glow);
   // estrellas tenues
   const sg = new THREE.BufferGeometry(), pts = [];
   for (let i = 0; i < 260; i++) pts.push((Math.random() - .5) * 18, (Math.random() - .5) * 12, -4 - Math.random() * 8);
@@ -708,7 +712,7 @@ requestAnimationFrame(loop);
 $('#sayByte').onclick = () => { const i = Math.floor(Math.random() * ASKS.length); runDemo(i, $$('#asks .chip')[i]); };
 
 /* ---------- Cinta de frases (solo cosas que ya hace o con su etiqueta) ---------- */
-const TAPE = [['Byte,', '¿qué clima hace?', '#3ee6b0'], ['Byte,', 'pon música', '#ffb238'], ['Byte,', 'cuéntame un chiste', '#a3e635'], ['Byte,', '¿qué noticias hay?', '#e879f9'], ['Byte,', 'acuérdate de esto', '#a78bfa'], ['Byte,', 'pausa la canción', '#fb7185'], ['Byte,', 'súbele el volumen', '#f472b6'], ['Byte,', '¿qué está sonando?', '#f2ede1'], ['Byte,', 'suspéndete', '#6366f1']];
+const TAPE = [['Byte,', '¿qué clima hace?', '#f2ede1'], ['Byte,', 'pon música', '#f2ede1'], ['Byte,', 'cuéntame un chiste', '#f2ede1'], ['Byte,', '¿qué noticias hay?', '#f2ede1'], ['Byte,', 'acuérdate de esto', '#f2ede1'], ['Byte,', 'pausa la canción', '#f2ede1'], ['Byte,', 'súbele el volumen', '#f2ede1'], ['Byte,', '¿qué está sonando?', '#f2ede1'], ['Byte,', 'suspéndete', '#f2ede1']];
 const tapeHtml = TAPE.map(([a, b, c]) => `<span style="--c:${c}">${a} <i>${b}</i></span>`).join('');
 $('#tape').innerHTML = tapeHtml + tapeHtml.replace(/<span/g, '<span aria-hidden="true"');
 
