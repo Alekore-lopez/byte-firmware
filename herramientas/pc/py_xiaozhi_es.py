@@ -11,6 +11,8 @@ Su interfaz viene solo en chino, así que este script:
   3. Hace el audio más estable en Windows: búferes de sonido más grandes
      (evitan chasquidos y cortes), trozos de audio de 60 ms como la placa,
      y espacio para respuestas largas (antes se perdía lo que pasaba de 10 s).
+  4. En modo automático deja que la respuesta termine de sonar antes de
+     volver a escuchar (antes se cortaba el final de cada respuesta).
 
 Se puede correr varias veces sin problema. Para deshacerlo:
     git checkout .     (dentro de la carpeta py-xiaozhi)
@@ -264,6 +266,37 @@ AUDIO = [
 ]
 
 
+# Final de la respuesta: cuando la nube avisa "terminé de mandar la voz",
+# py-xiaozhi borraba lo que aún no había sonado (el log lo muestra como
+# "清空 TTS 队列，丢弃 N 样本"). Ahora espera a que suene todo.
+MARCA_FINAL = "# BYTE: dejar terminar la respuesta"
+BUSCAR_FINAL = """        # realtime 一般还在 listen 里，不用再发一遍。
+"""
+AGREGAR_FINAL = f"""        {MARCA_FINAL} antes de volver a escuchar
+        fifo = getattr(self.audio, "_tts_fifo", None)
+        for _ in range(300):  # máximo 15 s
+            if fifo is None or fifo.size == 0 or generation != self._tts_generation:
+                break
+            await asyncio.sleep(0.05)
+        if generation != self._tts_generation:
+            return
+
+        # realtime 一般还在 listen 里，不用再发一遍。
+"""
+
+
+def arreglar_final(raiz: pathlib.Path) -> None:
+    archivo = raiz / "src" / "bootstrap" / "session.py"
+    codigo = archivo.read_text(encoding="utf-8")
+    if MARCA_FINAL in codigo:
+        print("Audio: el final de las respuestas ya estaba arreglado.")
+    elif codigo.count(BUSCAR_FINAL) == 1:
+        archivo.write_text(codigo.replace(BUSCAR_FINAL, AGREGAR_FINAL), encoding="utf-8", newline="")
+        print("Audio: ahora las respuestas suenan completas.")
+    else:
+        print("Aviso: src/bootstrap/session.py cambió y no pude arreglar el final de las respuestas.")
+
+
 def arreglar_audio(raiz: pathlib.Path) -> None:
     for ruta, buscar, poner in AUDIO:
         archivo = raiz / ruta
@@ -330,6 +363,7 @@ def main() -> int:
         print("Aviso: py-xiaozhi cambió y no pude activar la conversación automática.")
         print("Usa el botón Modo manual (pasa a automático) y luego Empezar.")
 
+    arreglar_final(raiz)
     arreglar_audio(raiz)
     return 0
 
