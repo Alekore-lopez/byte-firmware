@@ -1,0 +1,16 @@
+# Servidor propio de Byte (xiaozhi-esp32-server, proyecto libre de xinnan-tech)
+# Se arranca con:  docker compose up -d
+services:
+  xiaozhi-esp32-server:
+    image: ghcr.io/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: byte-servidor
+    restart: always
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - TZ=America/Bogota
+    ports:
+      - "8000:8000"   # WebSocket: por aquí habla Byte con el servidor
+      - "8003:8003"   # HTTP: dirección OTA (Byte pregunta aquí a dónde conectarse)
+    volumes:
+      - ./data:/opt/xiaozhi-esp32-server/data
