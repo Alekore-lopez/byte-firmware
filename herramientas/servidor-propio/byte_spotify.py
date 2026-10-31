@@ -8,6 +8,10 @@ Archivos (en la misma carpeta que este programa):
     spotify.json        -> {"client_id": "..."} de tu app en developer.spotify.com
     spotify_token.json  -> el permiso que das al iniciar sesión (no lo compartas)
 
+Lo que Byte pone se anota en ../data/.musica_reciente.json (las últimas 20).
+Así la memoria de la central sabe qué escuchaste y Byte puede proponerte
+"¿seguimos con la playlist de ayer?" (herramienta spotify_retomar).
+
 Iniciar sesión una sola vez (abre el navegador):
     python byte_spotify.py --login
 
@@ -18,6 +22,7 @@ import json
 import logging
 import os
 import sys
+import time
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 CONFIG = os.path.join(AQUI, "spotify.json")
@@ -25,6 +30,13 @@ TOKEN = os.path.join(AQUI, "spotify_token.json")
 # Spotify exige 127.0.0.1 (no "localhost") y que sea igual a la de tu app
 REDIRECT = "http://127.0.0.1:8806/callback"
 PERMISOS = "user-read-playback-state user-modify-playback-state user-read-currently-playing"
+
+# Historial de música: en la carpeta data de la central (la ve la memoria).
+# Si no existe (instalación vieja), queda junto a este archivo.
+_DATA = os.path.normpath(os.path.join(AQUI, "..", "data"))
+HISTORIAL = os.path.join(_DATA if os.path.isdir(_DATA) else AQUI, ".musica_reciente.json")
+MAX_HISTORIAL = 20
+_MESES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 
 logger = logging.getLogger("ByteSpotify")
 
@@ -80,6 +92,54 @@ def _error_spotify(e):
     return {"error": f"Spotify respondió con un error: {texto[:200]}"}
 
 
+def _cuando(t=None):
+    """Fecha corta en español, por ejemplo '31-oct 20:15'."""
+    t = time.localtime(t)
+    return f"{t.tm_mday}-{_MESES[t.tm_mon - 1]} {t.tm_hour:02d}:{t.tm_min:02d}"
+
+
+def leer_historial():
+    try:
+        with open(HISTORIAL, encoding="utf-8") as f:
+            lista = json.load(f)
+        return [m for m in lista if isinstance(m, dict) and m.get("uri")]
+    except Exception:
+        return []
+
+
+def anotar(tipo_api, item, busqueda=""):
+    """Guarda lo que acaba de sonar. Nunca rompe la música si falla."""
+    try:
+        lista = [m for m in leer_historial() if m.get("uri") != item.get("uri")]
+        lista.append({
+            "cuando": _cuando(),
+            "tipo": {"track": "canción", "artist": "artista", "album": "álbum"}.get(tipo_api, tipo_api),
+            "nombre": item.get("name", ""),
+            "de": ", ".join(a["name"] for a in item.get("artists", []) or []) if item.get("artists") else
+                  (item.get("owner") or {}).get("display_name", ""),
+            "uri": item.get("uri"),
+            "busqueda": busqueda,
+        })
+        lista = lista[-MAX_HISTORIAL:]
+        tmp = HISTORIAL + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(lista, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, HISTORIAL)
+    except Exception:
+        logger.exception("No pude anotar la música en el historial")
+
+
+def _elegir_del_historial(lista, cual=""):
+    """El último que coincida con 'cual' (nombre, artista o búsqueda), o el último."""
+    cual = (cual or "").strip().lower()
+    if cual:
+        for m in reversed(lista):
+            texto = " ".join(str(m.get(k, "")) for k in ("nombre", "de", "busqueda", "tipo")).lower()
+            if cual in texto:
+                return m
+    return lista[-1] if lista else None
+
+
 def registrar(mcp):
     """Agrega las herramientas de Spotify al servidor MCP de Byte."""
 
@@ -108,6 +168,7 @@ def registrar(mcp):
                 sp.start_playback(device_id=dispositivo, context_uri=item["uri"])
             autor = ", ".join(a["name"] for a in item.get("artists", [])) if item.get("artists") else ""
             logger.info(f"Spotify: {tipo_api} {item.get('name')}")
+            anotar(tipo_api, item, busqueda)
             return {"sonando": item.get("name"), "de": autor, "tipo": tipo_api}
         except Exception as e:
             return _error_spotify(e)
@@ -148,6 +209,33 @@ def registrar(mcp):
             nivel = max(0, min(100, int(nivel)))
             sp.volume(nivel, device_id=dispositivo)
             return {"volumen": nivel}
+        except Exception as e:
+            return _error_spotify(e)
+
+    @mcp.tool()
+    def spotify_retomar(cual: str = "") -> dict:
+        """Vuelve a poner música que ya sonó antes ("¿seguimos con la playlist de ayer?", "pon otra vez
+        lo de anoche", "la de siempre"). cual: vacío para lo último que sonó, o una pista como
+        "rock" o "Karol G" para buscar en lo que ha escuchado. Confirma en una frase qué pusiste."""
+        try:
+            lista = leer_historial()
+            elegido = _elegir_del_historial(lista, cual)
+            if not elegido:
+                return {"error": "Todavía no tengo música anotada. Pídeme algo y la próxima vez lo retomo."}
+            sp = _cliente()
+            dispositivo, _ = _dispositivo(sp)
+            if not dispositivo:
+                return _sin_dispositivo()
+            uri = elegido["uri"]
+            if uri.startswith("spotify:track:"):
+                sp.start_playback(device_id=dispositivo, uris=[uri])
+            else:
+                sp.start_playback(device_id=dispositivo, context_uri=uri)
+            anotar({"canción": "track", "artista": "artist", "álbum": "album"}.get(elegido.get("tipo"), elegido.get("tipo", "")),
+                   {"name": elegido.get("nombre"), "uri": uri, "owner": {"display_name": elegido.get("de", "")}},
+                   elegido.get("busqueda", ""))
+            return {"sonando": elegido.get("nombre"), "de": elegido.get("de"), "tipo": elegido.get("tipo"),
+                    "la_ultima_vez": elegido.get("cuando")}
         except Exception as e:
             return _error_spotify(e)
 
