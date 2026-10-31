@@ -8,6 +8,9 @@ Su interfaz viene solo en chino, así que este script:
      Los mensajes de la terminal (registro) siguen en chino.
   2. Activa el modo automático al abrir y empieza a escuchar, sin tocar
      botones.
+  3. Hace el audio más estable en Windows: búferes de sonido más grandes
+     (evitan chasquidos y cortes), trozos de audio de 60 ms como la placa,
+     y espacio para respuestas largas (antes se perdía lo que pasaba de 10 s).
 
 Se puede correr varias veces sin problema. Para deshacerlo:
     git checkout .     (dentro de la carpeta py-xiaozhi)
@@ -16,6 +19,7 @@ Uso, dentro de la carpeta py-xiaozhi:
     python py_xiaozhi_es.py
 """
 
+import json
 import pathlib
 import sys
 
@@ -249,6 +253,49 @@ AGREGAR = f"""        else:
             # GUI start installs its Qt callbacks and returns; terminal/GPIO"""
 
 
+# Audio: (archivo, buscar, reemplazar). Se cambian todas las apariciones.
+AUDIO = [
+    # "low" pide búferes mínimos a Windows; con algunos micrófonos y parlantes
+    # se quedan sin datos y suenan chasquidos o se pierden trozos de voz.
+    ("src/audio_codecs/stream_manager.py", 'latency="low"', 'latency="high"'),
+    # La nube manda la respuesta más rápido de lo que se reproduce; con 10 s
+    # de espacio, en respuestas largas se botaba el comienzo.
+    ("src/audio_codecs/audio_codec.py", "_TTS_FIFO_MAX_S = 10.0", "_TTS_FIFO_MAX_S = 120.0"),
+]
+
+
+def arreglar_audio(raiz: pathlib.Path) -> None:
+    for ruta, buscar, poner in AUDIO:
+        archivo = raiz / ruta
+        codigo = archivo.read_text(encoding="utf-8")
+        if buscar in codigo:
+            archivo.write_text(codigo.replace(buscar, poner), encoding="utf-8", newline="")
+            print(f"Audio: {ruta} ajustado.")
+        elif poner in codigo:
+            print(f"Audio: {ruta} ya estaba ajustado.")
+        else:
+            print(f"Aviso: {ruta} cambió y no pude ajustarlo.")
+
+    # Trozos de 60 ms (lo mismo que usa la placa): menos trabajo para el PC.
+    try:
+        import platformdirs
+
+        config = pathlib.Path(platformdirs.user_data_dir("py-xiaozhi")) / "config" / "config.json"
+    except ImportError:
+        config = None
+    if config is None or not config.exists():
+        print("Aviso: no encontré config.json; abre el programa una vez y vuelve a correr este script.")
+        return
+    datos = json.loads(config.read_text(encoding="utf-8-sig"))
+    audio = datos.setdefault("AUDIO_DEVICES", {})
+    if audio.get("frame_duration") != 60:
+        audio["frame_duration"] = 60
+        config.write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("Audio: trozos de 60 ms activados.")
+    else:
+        print("Audio: los trozos de 60 ms ya estaban activados.")
+
+
 def main() -> int:
     raiz = pathlib.Path.cwd()
     if not (raiz / "main.py").exists() or not (raiz / "src" / "ui" / "gui").is_dir():
@@ -282,6 +329,8 @@ def main() -> int:
     else:
         print("Aviso: py-xiaozhi cambió y no pude activar la conversación automática.")
         print("Usa el botón Modo manual (pasa a automático) y luego Empezar.")
+
+    arreglar_audio(raiz)
     return 0
 
 
