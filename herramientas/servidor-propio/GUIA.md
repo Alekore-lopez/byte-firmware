@@ -44,6 +44,12 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 ```
 Te guía para crear una app gratis en developer.spotify.com (Redirect URI `http://127.0.0.1:8806/callback`), inicia sesión una vez y suma las herramientas `spotify_poner`, `spotify_control`, `spotify_volumen` y `spotify_que_suena`. La música suena donde tengas Spotify abierto (PC, celular o TV), no en el parlante de Byte. El permiso queda en `internet\spotify_token.json`: no lo compartas.
 
+## Memoria
+```
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/activar-memoria.ps1?v=$(Get-Random)" | iex
+```
+Al terminar cada conversación, Gemini resume lo importante (nombres, gustos, fechas, pendientes) en `data\.memory.yaml`, que se queda solo en tu PC, y Byte lo lee en la siguiente. Cada dispositivo tiene su propia memoria: la placa empieza en blanco. Para que olvide todo, borra ese archivo y reinicia la central.
+
 ## Arreglos de la central (`parche_byte.py`)
 `docker-compose.yml` corre `data/parche_byte.py` antes de arrancar. Arregla tres cosas de la versión 0.9.8: las herramientas propias no cargaban (`'Tool' object has no attribute 'inputSchema'`), Gemini 3 rechazaba las herramientas (`missing a thought_signature`) y Whisper no sabía que hablas español. Si ya tenías la central instalada:
 ```

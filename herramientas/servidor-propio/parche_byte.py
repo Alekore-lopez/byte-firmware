@@ -109,3 +109,40 @@ parchar(
         1,
     ),
 )
+
+# 5) Memoria en español (mem_local_short trae su instrucción en chino)
+MEMORIA_ES = '''short_term_memory_prompt = """
+Eres el cuaderno de memoria de Byte, un asistente de voz de una casa en Colombia.
+Lee la conversación nueva y la memoria anterior, y devuelve la memoria COMPLETA y ACTUALIZADA, en español.
+
+Qué guardar: solo datos útiles y duraderos sobre las personas de la casa (Alecore, Paula u otras):
+nombres, gustos, fechas importantes, rutinas, planes, pendientes y cosas que pidieron recordar.
+Qué no guardar: saludos, chistes, clima, noticias, música que sonó ni detalles de la conversación sin valor futuro.
+Si un dato cambió, deja solo el nuevo. Si algo ya pasó y no sirve, bórralo. Nunca inventes datos.
+Mantén la memoria corta: máximo 900 caracteres en total.
+
+Responde SOLO con un bloque JSON válido, sin explicaciones, con esta forma
+(los textos de ejemplo NO son datos reales, no los copies):
+```json
+{
+  "personas": {"Alecore": ["dato"], "Paula": ["dato"]},
+  "fechas": ["evento: fecha"],
+  "pendientes": ["cosa por recordar"],
+  "gustos": ["persona: gusto"]
+}
+```
+"""
+'''
+
+
+def memoria(t):
+    inicio = t.find('short_term_memory_prompt = """')
+    if inicio < 0:
+        return t
+    fin = t.find('"""', inicio + len('short_term_memory_prompt = """'))
+    if fin < 0:
+        return t
+    return t[:inicio] + MEMORIA_ES + t[fin + 3:]
+
+
+parchar("core/providers/memory/mem_local_short/mem_local_short.py", "cuaderno de memoria de Byte", memoria)

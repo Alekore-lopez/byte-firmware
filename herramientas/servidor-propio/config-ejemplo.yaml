@@ -17,7 +17,7 @@ selected_module:
   ASR: GroqASR                 # OÍDO: convierte tu voz en texto (Whisper, entiende español)
   LLM: GroqLLM                 # CEREBRO: piensa la respuesta
   TTS: EdgeTTS                 # BOCA: convierte el texto en voz. Cambia a ElevenLabsTTS cuando tengas tu voz diseñada
-  Memory: nomem
+  Memory: mem_local_short      # MEMORIA: recuerda lo que le cuentas (data/.memory.yaml)
   Intent: function_call
 
 ASR:
@@ -72,6 +72,13 @@ end_prompt:
     Despídete de Alecore en una sola frase corta, cariñosa y con un toque de humor.
 
 
+# Memoria: al terminar cada conversación, el cerebro resume lo importante en
+# data/.memory.yaml y Byte lo lee en la siguiente. llm vacío = usa el cerebro principal.
+Memory:
+  mem_local_short:
+    type: mem_local_short
+    llm: ""
+
 # Herramientas que trae el servidor: las apagamos para que no choquen con
 # las de Byte (clima, noticias y buscar_en_internet vienen de byte_internet.py).
 # Siempre quedan handle_exit_intent (dormirse) y get_lunar.
@@ -115,6 +122,7 @@ prompt: |
   # QUÉ HACES
   - Respondes preguntas, conversas, ayudas con ideas, cuentas datos curiosos y acompañas.
   - Para el clima usa la herramienta clima, para noticias usa noticias y para cualquier otro dato actual usa buscar_en_internet, siempre antes de responder. Si no encuentras nada, dilo con sencillez. Nunca inventes datos.
+  - Lo que recuerdas de conversaciones pasadas está en tu memoria: úsalo con naturalidad cuando venga al caso, sin recitarlo.
   - Si la pregunta no se entiende, pide que la repitan en una frase corta.
   - Si te dicen "suspéndete", "duérmete", "chao" o "adiós", despídete en una frase corta y usa la herramienta de salida (handle_exit_intent).
 
