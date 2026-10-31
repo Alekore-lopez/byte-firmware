@@ -19,7 +19,10 @@ $pruebas = @(
   @{ voz = "es-CO-GonzaloNeural"; tono = "+60Hz"; vel = "+15%" },
   @{ voz = "es-CO-SalomeNeural";  tono = "+30Hz"; vel = "+10%" },
   @{ voz = "es-MX-JorgeNeural";   tono = "+40Hz"; vel = "+10%" },
-  @{ voz = "es-MX-JorgeNeural";   tono = "+70Hz"; vel = "+20%" }
+  @{ voz = "es-MX-JorgeNeural";   tono = "+70Hz"; vel = "+20%" },
+  # Estilo "perro relajado": voz grave y lenta
+  @{ voz = "es-MX-JorgeNeural";   tono = "-15Hz"; vel = "-10%" },
+  @{ voz = "es-CO-GonzaloNeural"; tono = "-20Hz"; vel = "-12%" }
 )
 
 $n = 1

@@ -24,7 +24,7 @@ Abre **PowerShell** y pega esta sola línea:
 ```
 iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/instalar.ps1?v=$(Get-Random)" | iex
 ```
-Eso crea la carpeta `C:\Users\aleja\byte-servidor` con todos los archivos y después genera 6 audios en la carpeta `byte-voces`. Escúchalos y dime qué número te gustó.
+Eso crea la carpeta `C:\Users\aleja\byte-servidor` con todos los archivos y después genera 8 audios en la carpeta `byte-voces`. Escúchalos y dime qué número te gustó.
 
 **Qué hace esa línea:** `iwr` (Invoke-WebRequest) descarga el instalador desde tu GitHub, e `iex` lo ejecuta. Es como pedirle a PowerShell "baja esta receta y cocínala". Solo hazlo con scripts en los que confíes, como los de tu propio repositorio.
 
