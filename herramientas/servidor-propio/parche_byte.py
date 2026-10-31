@@ -17,6 +17,10 @@ reinicios y actualizaciones sin romper nada.
 4. Gemini 3 "piensa" a fondo por defecto (nivel alto), y eso le suma segundos
    a cada respuesta. Para un asistente de voz basta con pensar poco
    (reasoning_effort "low").
+5. Memoria en español (mem_local_short trae su instrucción en chino).
+6. Oído más preciso: Whisper con temperature 0, una pista en español y un
+   filtro para las frases fantasma ("Subtítulos de Amara.org", "Gracias por
+   ver") que inventa cuando le llega un pedazo de audio casi en silencio.
 """
 
 import re
@@ -146,3 +150,43 @@ def memoria(t):
 
 
 parchar("core/providers/memory/mem_local_short/mem_local_short.py", "cuaderno de memoria de Byte", memoria)
+
+
+# 6) Oído más preciso: Whisper sin "creatividad" (temperature 0), una pista en
+#    español de cómo hablas, y filtro de las frases fantasma que Whisper inventa
+#    cuando le llega un pedacito de audio casi en silencio.
+WHISPER_VIEJO = '"prompt": "Byte, Alecore, Paula."}'
+WHISPER_NUEVO = (
+    '"prompt": "Hola Byte. Conversación en español de Colombia entre Byte, '
+    'Alecore y Paula.", "temperature": "0"}'
+)
+FANTASMAS = '''
+_BYTE_FANTASMAS = (
+    "amara.org", "subtítulos", "subtitulos", "gracias por ver",
+    "suscríbete", "suscribete", "gracias por su atención",
+)
+
+
+def _byte_sin_fantasmas(texto):
+    """Whisper a veces 'oye' frases de YouTube en el silencio. Las descartamos."""
+    limpio = (texto or "").strip()
+    bajo = limpio.lower()
+    if len(bajo) < 2 or any(f in bajo for f in _BYTE_FANTASMAS):
+        return ""
+    return limpio
+'''
+
+
+def whisper_preciso(t):
+    t = t.replace(WHISPER_VIEJO, WHISPER_NUEVO, 1)
+    t = t.replace(
+        'text = response.json().get("text", "")',
+        'text = _byte_sin_fantasmas(response.json().get("text", ""))',
+        1,
+    )
+    if "_byte_sin_fantasmas(response" not in t:
+        return t
+    return t.rstrip() + "\n\n" + FANTASMAS
+
+
+parchar("core/providers/asr/openai.py", "_BYTE_FANTASMAS", whisper_preciso)

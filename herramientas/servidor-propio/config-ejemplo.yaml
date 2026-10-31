@@ -20,12 +20,21 @@ selected_module:
   Memory: mem_local_short      # MEMORIA: recuerda lo que le cuentas (data/.memory.yaml)
   Intent: function_call
 
+# DETECTOR DE VOZ (VAD): decide cuándo empezaste y cuándo terminaste de hablar.
+VAD:
+  SileroVAD:
+    type: silero
+    model_dir: models/snakers4_silero-vad
+    threshold: 0.5               # desde qué "seguridad" (0 a 1) cuenta como voz. Sube a 0.6 si el ruido lo activa
+    threshold_low: 0.25          # por debajo de esto ya es silencio. Más bajo = no te corta si bajas la voz al final
+    min_silence_duration_ms: 1200   # cuánto silencio (en milisegundos) espera antes de responder. Venía en 200
+
 ASR:
   GroqASR:
     type: openai
     api_key: PEGA_AQUI_TU_CLAVE_DE_GROQ
     base_url: https://api.groq.com/openai/v1/audio/transcriptions
-    model_name: whisper-large-v3-turbo
+    model_name: whisper-large-v3   # el modelo completo entiende mejor que el "turbo"
     output_dir: tmp/
 
 LLM:

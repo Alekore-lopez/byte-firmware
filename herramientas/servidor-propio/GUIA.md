@@ -62,6 +62,22 @@ Al terminar cada conversación, Gemini resume lo importante (nombres, gustos, fe
 iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/arreglar-central.ps1?v=$(Get-Random)" | iex
 ```
 
+## Oído: que espere a que termines y te entienda mejor
+La central tiene un **detector de voz (VAD)** que escucha el micrófono y decide cuándo terminaste de hablar. Por defecto le bastaban **200 ms** de silencio (un respiro) para cortar y responder. Ahora espera **1,2 s** (`min_silence_duration_ms: 1200` en el bloque `VAD:` de `.config.yaml`). Whisper pasa al modelo completo `whisper-large-v3` (más preciso que el turbo) y `parche_byte.py` le pone `temperature 0` y borra las frases fantasma ("Subtítulos de Amara.org", "Gracias por ver") que inventa con audio casi vacío.
+
+```powershell
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/ajustar-oido.ps1?v=$(Get-Random)" | iex
+```
+
+| Si pasa esto | Cambia | Valor |
+|---|---|---|
+| Sigue cortándote | `min_silence_duration_ms` | 1500 |
+| Tarda mucho en responder | `min_silence_duration_ms` | 900 |
+| Se activa solo con ruido o la TV | `threshold` | 0.6 |
+| Te corta cuando bajas la voz al final | `threshold_low` | 0.2 |
+
+Después de cada cambio: `docker restart byte-servidor`.
+
 ## Conectar Byte
 - **py-xiaozhi (PC):** en `%LOCALAPPDATA%\py-xiaozhi\py-xiaozhi\config\config.json` pon `OTA_VERSION_URL = http://TU-IP:8003/xiaozhi/ota/` y `WEBSOCKET_URL = ws://TU-IP:8000/xiaozhi/v1/`.
 - **Placa:** al configurar el WiFi, en opciones avanzadas, pon la URL OTA. Si no aparece, cámbiala en `idf.py menuconfig` → *Default OTA URL* y vuelve a flashear.
@@ -81,4 +97,5 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 | `no longer available to new users` (Gemini) | Versión vieja del modelo | Usar la que sugiere el error |
 | `missing a thought_signature` (Gemini) | La central no reenvía la firma de Gemini 3 | `arreglar-central.ps1` |
 | `'Tool' object has no attribute 'inputSchema'` | Error de la versión 0.9.8 | `arreglar-central.ps1` |
+| Byte responde antes de que termines | Detector de voz con 200 ms de espera | `ajustar-oido.ps1` |
 | Byte dice que no puede buscar | Las herramientas de internet no están corriendo | Volver a correr `activar-internet.ps1` |
