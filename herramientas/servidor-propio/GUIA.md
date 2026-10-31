@@ -44,6 +44,12 @@ iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/he
 ```
 Te guía para crear una app gratis en developer.spotify.com (Redirect URI `http://127.0.0.1:8806/callback`), inicia sesión una vez y suma las herramientas `spotify_poner`, `spotify_control`, `spotify_volumen` y `spotify_que_suena`. La música suena donde tengas Spotify abierto (PC, celular o TV), no en el parlante de Byte. El permiso queda en `internet\spotify_token.json`: no lo compartas.
 
+## Botón para encender todo
+```
+iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/crear-boton.ps1?v=$(Get-Random)" | iex
+```
+Crea en el escritorio **Byte** (la nube) y **Apagar Byte**. "Byte" abre Docker Desktop si está cerrado, prende la central y las herramientas, espera a que la central conteste y abre el programa de Byte en el PC (Byte.bat). Con la placa, basta con encenderla después del botón.
+
 ## Memoria
 ```
 iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/activar-memoria.ps1?v=$(Get-Random)" | iex
