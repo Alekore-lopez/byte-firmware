@@ -1,8 +1,10 @@
 # Byte 🤖
 
+> **Tu escritorio tiene nueva personalidad.**
+
 [![Compilar Byte](https://github.com/Alekore-lopez/byte-firmware/actions/workflows/byte.yml/badge.svg)](https://github.com/Alekore-lopez/byte-firmware/actions/workflows/byte.yml)
 
-Byte es un asistente de voz de escritorio. Te escucha cuando dices **"Byte"**, habla contigo en español y muestra caras en su pantalla.
+Byte es una nubecita negra con piecitos y un asistente de voz de escritorio. Te escucha cuando dices **"Byte"**, habla contigo en español y muestra caras en su pantalla.
 
 Este repositorio es una copia (fork) de [XiaoZhi ESP32](https://github.com/78/xiaozhi-esp32), un firmware libre con licencia MIT. Aquí guardamos el código de Byte, el historial de cambios y los `.bin` listos para cargar. La documentación original en inglés está en [README.md](../README.md).
 

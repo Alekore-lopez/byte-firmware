@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace {
 
@@ -170,6 +171,11 @@ void ByteFaceRenderer::SetFace(const byte_face_t* face, uint32_t now_ms) {
     k_ = 0;
 }
 
+void ByteFaceRenderer::StartGame(ByteGame game, uint32_t now_ms) {
+    game_ = game;
+    game_start_ = now_ms;
+}
+
 bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
     now_ = now_ms;
 
@@ -213,7 +219,7 @@ bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
     }
 
     // 3. Mirada: cada pocos segundos elige un punto y los ojos lo siguen despacio
-    if (target_->gaze) {
+    if (target_->gaze && game_ == GAME_NONE) {  // mientras juega, mira lo que pide el juego
         if (now_ms >= next_gaze_) {
             if (lv_rand(0, 99) < 40) {
                 gaze_to_x_ = gaze_to_y_ = 0;
@@ -229,6 +235,7 @@ bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
     gaze_x_ += (gaze_to_x_ - gaze_x_) * 0.18f;
     gaze_y_ += (gaze_to_y_ - gaze_y_) * 0.18f;
 
+    ComputePlay();
     ComputeFrame();
 
     // 4. Solo repintar lo que cambió: redibujar los 320x240 por SPI tarda ~60 ms
@@ -237,18 +244,26 @@ bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
         // Todos los valores ya vienen redondeados de ComputeFrame(): si la firma no
         // cambia, el dibujo sería idéntico al anterior y no hay que repintar
         for (float v : {e.cx, e.cy, e.w, e.h, e.r, e.lid_top, e.lid_bot, e.beat * 100, e.blink * 64,
-                        (float)e.shape}) {
+                        (float)e.shape, e.moon, e.corona * 32}) {
             sig = sig * 31 + (uint32_t)R(v);
         }
     }
     uint16_t acc = frame_acc_in_ | frame_acc_out_;
-    bool changed = first_frame_ || sig != last_signature_ || acc != 0 || acc != last_acc_;
+    // Con juego o sueño todo se mueve en cada cuadro; y un cuadro más al terminar,
+    // para borrar la mosca o las notas que quedaron pintadas
+    bool play = game_ != GAME_NONE || sleepy_ > 0;
+    bool changed = first_frame_ || sig != last_signature_ || acc != 0 || acc != last_acc_ || play ||
+                   last_play_;
+    last_play_ = play;
     if (!changed) {
         return false;
     }
 
     lv_area_t area;
     EyesArea(&area);
+    if (play) {
+        PlayArea(&area);
+    }
     for (int i = 0; i < kAccCount; i++) {
         if (acc & (1 << i)) {
             lv_area_t a;
@@ -274,8 +289,9 @@ void ByteFaceRenderer::ComputeFrame() {
         const Eye& e = eye_[i];
         float side = i == 0 ? -1 : 1;
         // Posición en el diseño, con la mirada
-        float x = 120 + side * kGap / 2 + e.dx + gaze_x_;
-        float y = 108 + e.dy + gaze_y_;
+        float x = 120 + side * kGap / 2 + e.dx + gaze_x_ + play_.dx[i];
+        // Con sueño mira un poco hacia abajo
+        float y = 108 + e.dy + gaze_y_ + play_.dy[i] + sleepy_ * 4;
         // Animación: escala alrededor del centro y desplaza
         x = 120 + (x - 120) * anim.s + anim.dx;
         y = 108 + (y - 108) * anim.s + anim.dy;
@@ -285,16 +301,142 @@ void ByteFaceRenderer::ComputeFrame() {
         o.shape = e.shape;
         o.cx = roundf(X(x));
         o.cy = roundf(Y(y));
-        o.w = roundf(e.w * anim.s * scale_);
-        o.h = roundf(e.h * anim.s * scale_);
+        o.w = roundf(e.w * anim.s * play_.sx[i] * scale_);
+        o.h = roundf(e.h * anim.s * play_.sy[i] * scale_);
         o.r = roundf(e.r * anim.s * scale_);
         o.lid_top = roundf(e.lid_top);
         o.lid_bot = roundf(e.lid_bot);
         o.beat = roundf(anim.beat * 100) / 100;
         o.blink = target_->blink ? roundf(blink_ * 64) / 64 : 1;
+        // Eclipse: la luna va y viene despacio; al escuchar se corre para mostrar más sol
+        float sun = o.w * 0.27f;
+        bool listening = strcmp(target_->id, "escucha") == 0;
+        float swing = listening ? 0.55f : 0.25f * sinf(now_ * 0.0004f + i * 0.6f);
+        o.moon = roundf(sun * swing * (i == 0 ? -1 : 1));
+        o.corona = roundf((1 + 0.06f * sinf(now_ * 0.002f)) * 32) / 32;
+        o.sleep = play_.lid;
     }
     frame_acc_in_ = EffectiveAcc(target_);
     frame_acc_out_ = acc_out_ & ~frame_acc_in_;
+}
+
+// Modo juego: calcula cuánto mueve, estira o aplasta cada ojo el juego de
+// ahora, y dónde van la mosca o la pelotita. Son las mismas fórmulas del
+// taller de ojos, pasadas a las medidas del diseño (240x240).
+void ByteFaceRenderer::ComputePlay() {
+    Play p;  // todo en cero: sin juego los ojos no se mueven
+    if (game_ != GAME_NONE) {
+        uint32_t ms = now_ - game_start_;
+        if (ms >= kGameMs) {
+            game_ = GAME_NONE;  // se acabó el juego
+        } else {
+            const float t = ms / 1000.0f, total = kGameMs / 1000.0f;
+            p.t = t;
+            // Entra y sale en 0,4 s para que los ojos no peguen un salto
+            p.env = std::min({1.0f, t / 0.4f, (total - t) / 0.4f});
+            switch (game_) {
+                case GAME_MOSCA: {
+                    // La mosca dibuja un ocho por la pantalla y los ojos la siguen
+                    p.fly_x = 120 + sinf(t * 1.7f) * 96;
+                    p.fly_y = 100 + sinf(t * 2.9f) * 34;
+                    float lx = (p.fly_x - 120) / 96, ly = (p.fly_y - 100) / 34;
+                    for (int i = 0; i < 2; i++) {
+                        p.dx[i] = lx * 9;
+                        p.dy[i] = ly * 7;
+                    }
+                    break;
+                }
+                case GAME_PONG: {
+                    // u va de 0 a 1 y vuelve: la pelotita pasa de un ojo al otro
+                    float q = fmodf(t * 0.9f, 2), u = q < 1 ? q : 2 - q;
+                    p.ball_x = 120 - kGap / 2 + u * kGap;
+                    p.ball_y = 72 - sinf(u * kPi) * 22;
+                    for (int i = 0; i < 2; i++) {
+                        p.dx[i] = (p.ball_x - 120) / 60 * 5;
+                        p.dy[i] = -3;
+                    }
+                    if (std::min(u, 1 - u) < 0.06f) {  // ¡golpe! el ojo se aplasta
+                        int i = u < 0.5f ? 0 : 1;
+                        p.sx[i] = 1.15f;
+                        p.sy[i] = 0.8f;
+                    }
+                    break;
+                }
+                case GAME_SALTITOS:
+                    for (int i = 0; i < 2; i++) {
+                        float ph = fmodf(t * 2.2f + i * 0.5f, 1);
+                        p.dy[i] = -sinf(ph * kPi) * 22;
+                        if (ph < 0.08f || ph > 0.92f) {  // al caer se aplasta contra el piso
+                            p.sx[i] = 1.2f;
+                            p.sy[i] = 0.75f;
+                            p.dy[i] += eye_[i].h * (1 - p.sy[i]) / 2;  // aplastado desde abajo
+                        }
+                    }
+                    break;
+                case GAME_BIZCO: {
+                    // Cada 3 s: los junta poco a poco y a los 2,2 s los suelta de golpe
+                    float c = fmodf(t, 3), k = c > 2.2f ? 0 : std::min(1.0f, c / 1.2f);
+                    p.dx[0] = k * 18;
+                    p.dx[1] = -k * 18;
+                    break;
+                }
+                case GAME_VUELTA: {
+                    float a = t * 2.2f;
+                    for (int i = 0; i < 2; i++) {
+                        p.dx[i] = cosf(a) * 14;
+                        p.dy[i] = sinf(a) * 12;
+                    }
+                    break;
+                }
+                case GAME_SILBANDO:
+                    for (int i = 0; i < 2; i++) {
+                        p.dx[i] = 4;
+                        p.dy[i] = -8;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            // El "volumen" del juego: al entrar y al salir todo vuelve a su sitio
+            for (int i = 0; i < 2; i++) {
+                p.dx[i] *= p.env;
+                p.dy[i] *= p.env;
+                p.sx[i] = 1 + (p.sx[i] - 1) * p.env;
+                p.sy[i] = 1 + (p.sy[i] - 1) * p.env;
+            }
+        }
+    }
+    if (sleepy_ > 0) {
+        // Cada 9 s bosteza: la boca se abre y se cierra en 2,7 s y los ojos se aprietan
+        float ph = fmodf((float)now_, 9000) / 9000;
+        p.yawn = sleepy_ > 0.3f && ph < 0.3f ? sinf(ph / 0.3f * kPi) : 0;
+        p.lid = std::min(0.95f, sleepy_ + p.yawn * 0.25f);
+    }
+    play_ = p;
+}
+
+// Rectángulo extra que hay que repintar por la mosca, la pelotita, las notas o el bostezo
+void ByteFaceRenderer::PlayArea(lv_area_t* area) const {
+    auto add = [&](float x1, float y1, float x2, float y2) {
+        lv_area_t a = {R(X(x1)) - 2, R(Y(y1)) - 2, R(X(x2)) + 2, R(Y(y2)) + 2};
+        Join(area, area, &a);
+    };
+    switch (game_) {
+        case GAME_MOSCA:
+            add(play_.fly_x - 8, play_.fly_y - 7, play_.fly_x + 8, play_.fly_y + 5);
+            break;
+        case GAME_PONG:
+            add(play_.ball_x - 7, play_.ball_y - 7, play_.ball_x + 7, play_.ball_y + 7);
+            break;
+        case GAME_SILBANDO:
+            add(112, 40, 224, 192);
+            break;
+        default:
+            break;
+    }
+    if (play_.yawn > 0) {
+        add(108, 170, 132, 198);
+    }
 }
 
 void ByteFaceRenderer::EyesArea(lv_area_t* area) const {
@@ -340,6 +482,7 @@ void ByteFaceRenderer::Draw(lv_layer_t* layer) {
     // Los accesorios nuevos aparecen y los viejos se desvanecen durante la transición
     DrawAcc(layer, frame_acc_out_, Opa(1 - k_, LV_OPA_COVER));
     DrawAcc(layer, frame_acc_in_, Opa(k_, LV_OPA_COVER));
+    DrawPlay(layer);
 }
 
 void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side) const {
@@ -351,7 +494,7 @@ void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side
             // El parpadeo encoge el alto del ojo
             float h = std::max(5 * s, e.h * e.blink);
             float x1 = e.cx - e.w / 2, x2 = e.cx + e.w / 2;
-            FillRect(layer, x1, e.cy - h / 2, x2, e.cy + h / 2, R(e.r), color_, LV_OPA_COVER);
+            DrawEclipse(layer, e, h);
 
             // Párpado de arriba: un trapecio negro inclinado (enfado o tristeza)
             if (fabsf(e.lid_top) > 0.5f) {
@@ -368,6 +511,11 @@ void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side
                 float ry = e.w * 0.55f;
                 float cy = e.cy + h / 2 + ry + 2 * s - e.lid_bot / 100 * e.h;
                 FillEllipse(layer, e.cx, cy, e.w * 0.8f, ry, bg, LV_OPA_COVER);
+            }
+            // Sueño: el párpado baja desde arriba como una cortina negra
+            if (e.sleep > 0.01f) {
+                float top = e.cy - h / 2;
+                FillRect(layer, x1 - 2, top - 2, x2 + 2, top + h * e.sleep, 0, bg, LV_OPA_COVER);
             }
             break;
         }
@@ -387,6 +535,36 @@ void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side
             break;
         }
     }
+}
+
+// Ojo "Eclipse": la píldora queda oscura con un toque del color, adentro brilla
+// un sol con su corona y una luna negra lo tapa casi entero. Todo son círculos
+// que caben dentro de la píldora, así que no hace falta recortar nada.
+void ByteFaceRenderer::DrawEclipse(lv_layer_t* layer, const EyeOnScreen& e, float h) const {
+    const lv_color_t bg = lv_color_black();
+    float x1 = e.cx - e.w / 2, x2 = e.cx + e.w / 2;
+    // Fondo de la píldora: el color muy apagado (10 %)
+    FillRect(layer, x1, e.cy - h / 2, x2, e.cy + h / 2, R(e.r), lv_color_mix(color_, bg, 26),
+             LV_OPA_COVER);
+    float room = std::min(e.w, h) / 2 - 1;  // radio máximo que cabe en la píldora
+    float sun = std::min(e.w * 0.27f, room);
+    if (room < 6 * scale_) {
+        return;  // a mitad de un parpadeo no se ve el sol
+    }
+    // Corona: anillos del color, más transparentes hacia afuera, que laten
+    static const float kRing[] = {1.0f, 0.8f, 0.6f, 0.42f};
+    static const lv_opa_t kOpa[] = {36, 72, 128, 200};
+    for (int i = 0; i < 4; i++) {
+        float r = std::min(room, sun + (room - sun) * kRing[i] * e.corona);
+        FillEllipse(layer, e.cx, e.cy, r, r, color_, kOpa[i]);
+    }
+    // Sol: el color, con el centro un poco más claro
+    FillEllipse(layer, e.cx, e.cy, sun, sun, color_, LV_OPA_COVER);
+    FillEllipse(layer, e.cx, e.cy, sun * 0.8f, sun * 0.8f, lv_color_mix(lv_color_white(), color_, 70),
+                LV_OPA_COVER);
+    // Luna: un círculo negro un poco más grande que el sol, corrido a un lado
+    float moon = sun * 1.02f;
+    FillEllipse(layer, e.cx + e.moon, e.cy, moon, moon, bg, LV_OPA_COVER);
 }
 
 void ByteFaceRenderer::DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const {
@@ -491,5 +669,47 @@ void ByteFaceRenderer::DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) co
     }
     if (acc & ACC_SWEAT) {
         Drop(layer, X(120 + g + 34), Y(cy - 44 + sinf(t / 400) * 3), 8 * s, lv_color_hex(0x7dd3fc), opa);
+    }
+}
+
+// Lo que dibuja el modo juego encima de los ojos
+void ByteFaceRenderer::DrawPlay(lv_layer_t* layer) const {
+    const float s = scale_;
+    const lv_color_t white = lv_color_white();
+    const lv_opa_t opa = Opa(play_.env, LV_OPA_COVER);
+    switch (game_) {
+        case GAME_MOSCA: {
+            // Cuerpo blanco y dos alitas transparentes que aletean
+            float fx = play_.fly_x, fy = play_.fly_y;
+            float wing = (1.2f + 0.6f * fabsf(sinf(now_ / 25.0f))) * s;
+            FillEllipse(layer, X(fx - 3), Y(fy - 3), 3 * s, wing, white, Opa(play_.env, 110));
+            FillEllipse(layer, X(fx + 3), Y(fy - 3), 3 * s, wing, white, Opa(play_.env, 110));
+            FillEllipse(layer, X(fx), Y(fy), 2.6f * s, 2.6f * s, white, opa);
+            break;
+        }
+        case GAME_PONG:
+            FillEllipse(layer, X(play_.ball_x), Y(play_.ball_y), 5 * s, 5 * s, white, opa);
+            break;
+        case GAME_SILBANDO: {
+            // Boquita de silbar y tres notas que suben y se desvanecen
+            FillEllipse(layer, X(120), Y(182), 5 * s, 5 * s, color_, opa);
+            for (int k = 0; k < 3; k++) {
+                float q = fmodf(play_.t * 0.6f + k * 0.33f, 1);
+                float x = 176 + q * 30 + k * 5, y = 150 - q * 90;
+                lv_opa_t no = Opa((1 - q) * play_.env, LV_OPA_COVER);
+                // Cabeza, palito y banderita
+                FillEllipse(layer, X(x), Y(y), 4.5f * s, 3.5f * s, color_, no);
+                Line(layer, X(x + 4), Y(y), X(x + 4), Y(y - 14), 2 * s, color_, no);
+                Line(layer, X(x + 4), Y(y - 14), X(x + 10), Y(y - 10), 2 * s, color_, no);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+    if (play_.yawn > 0) {
+        // Bostezo: una boca ovalada que se abre y se cierra
+        FillEllipse(layer, X(120), Y(182), 9 * s, (4 + 9 * play_.yawn) * s, color_,
+                    Opa(play_.yawn, LV_OPA_COVER));
     }
 }

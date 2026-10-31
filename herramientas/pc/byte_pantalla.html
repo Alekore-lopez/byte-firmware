@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Pantalla de Byte</title>
+<meta name="byte-view" content="screen">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: simulador. A la izquierda el escenario con la Nube y su pantalla táctil; a la derecha el laboratorio (hablarle, situaciones, registro del firmware). Debajo, el análisis del control de volumen. */
+:root{
+  --bg:#eeefeb; --panel:#fbfbf8; --ink:#1a1d1b; --muted:#5d6560; --line:#d6dbd5;
+  --accent:#0e9fb8; --accent-ink:#ffffff; --chip:#f0f2ee; --rec:#2b8a3e;
+  --stage-a:#f6f6f2; --stage-b:#d9ddd5;
+  --f-display:"Baloo 2", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111412; --panel:#181c19; --ink:#e8ebe7; --muted:#9ba49e; --line:#2a302c;
+  --accent:#3ee6b0; --accent-ink:#04261c; --chip:#1f2420; --rec:#69db7c;
+  --stage-a:#3b413d; --stage-b:#1d211e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111412; --panel:#181c19; --ink:#e8ebe7; --muted:#9ba49e; --line:#2a302c;
+  --accent:#3ee6b0; --accent-ink:#04261c; --chip:#1f2420; --rec:#69db7c;
+  --stage-a:#3b413d; --stage-b:#1d211e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding-block:22px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.kicker{font-family:var(--f-mono);font-size:12px;color:var(--muted);letter-spacing:.04em;margin:0 0 4px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(32px,5vw,48px);line-height:1;margin:0}
+.lead{color:var(--muted);margin:8px 0 16px;max-width:80ch}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:14px;align-items:start}
+@media (max-width:980px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:radial-gradient(110% 90% at 50% 30%,var(--stage-a),var(--stage-b));aspect-ratio:4/3;max-height:max(360px,calc(100vh - 150px));touch-action:none;user-select:none;-webkit-user-select:none}
+@media (max-width:640px){.stage{aspect-ratio:4/5}.hint{display:none}}
+.device{position:absolute;left:0;top:0;width:210px;height:126px;transform-origin:0 0;transition:transform .5s cubic-bezier(.3,.7,.2,1)}
+.device svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 6px 8px rgb(0 0 0 / .35))}
+#screen{position:absolute;left:74.975px;top:48.2px;width:58.05px;height:43.6px;border-radius:.6px;background:#000;cursor:pointer;touch-action:none;transition:filter .4s}
+.pbtn{all:unset;position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#3a3d42,#121315 70%);box-shadow:0 .4px .8px rgb(0 0 0 / .6),inset 0 .3px .4px rgb(255 255 255 / .15);cursor:pointer;display:grid;place-items:center;color:#9aa1a8;font:600 4px/1 var(--f-body)}
+.pbtn:active{transform:scale(.92)}
+.pbtn[hidden]{display:none}
+.stage-tools{position:absolute;z-index:3;left:12px;right:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center;pointer-events:none}
+.stage-tools>*,.stage-tools>.btn{pointer-events:auto}
+.switch{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px;cursor:pointer}
+.switch input{appearance:none;width:34px;height:20px;border-radius:999px;background:var(--line);position:relative;margin:0;cursor:pointer;transition:background .2s}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .3);transition:transform .2s}
+.switch input:checked{background:var(--accent)}
+.switch input:checked::after{transform:translateX(14px)}
+.switch input:focus-visible,.btn:focus-visible,.chipb:focus-visible,#say:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{all:unset;cursor:pointer;font-weight:500;font-size:13px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn[disabled]{opacity:.5;cursor:default}
+.hint{position:absolute;z-index:3;left:12px;top:12px;font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--panel) 80%,transparent);border-radius:8px;padding:4px 9px;max-width:calc(100% - 24px);pointer-events:none}
+.lab{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;font-weight:600}
+.say{display:flex;gap:6px}
+#say{flex:1;min-width:0;font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chipb{all:unset;cursor:pointer;font-size:12.5px;padding:3px 9px;border-radius:999px;background:var(--chip);border:1px solid var(--line)}
+.chipb:hover{border-color:var(--muted)}
+.ai{font-size:12px;color:var(--muted);margin:8px 0 0}
+.rows{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
+.row input[type=range]{width:150px;accent-color:var(--accent)}
+.log{font-family:var(--f-mono);font-size:11.5px;line-height:1.45;margin:0;padding:0;list-style:none;max-height:230px;overflow:auto;display:flex;flex-direction:column-reverse}
+.log li{padding:3px 0;border-bottom:1px dashed var(--line);overflow-wrap:anywhere}
+.log b{font-weight:500;color:var(--accent)}
+.log .new{color:#b26b00}
+:root[data-theme="dark"] .log .new{color:#ffc04d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .log .new{color:#ffc04d}}
+.legend{font-size:11.5px;color:var(--muted);margin:8px 0 0}
+.analysis{margin-top:26px}
+.analysis h2{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1.05;margin:0 0 6px}
+.analysis>p{color:var(--muted);margin:0 0 14px;max-width:80ch}
+.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.opts{grid-template-columns:minmax(0,1fr)}}
+.opt{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.opt.rec{border-color:var(--rec);box-shadow:0 0 0 1px var(--rec)}
+.opt h3{font-family:var(--f-display);font-weight:700;font-size:21px;line-height:1.1;margin:0}
+.opt .tag{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.opt.rec .tag{color:var(--rec)}
+.opt ul{margin:0;padding-left:18px;font-size:14px}
+.opt li{margin:3px 0}
+.opt b.pl{color:var(--rec);font-weight:600}
+.verdict{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--rec);border-radius:12px;padding:14px 18px;font-size:15px}
+.foot{color:var(--muted);font-size:12.5px;margin-top:16px;max-width:90ch}
+/* Solo la pantalla: todo lo demás queda oculto (sigue existiendo para que el código funcione) */
+html,body{background:#000;margin:0;height:100%;overflow:hidden}
+.wrap{max-width:none;padding:0}
+.wrap>.kicker,.wrap>h1,.wrap>.lead,.lab,.analysis,.foot,.hint,.stage-tools,.device svg{display:none!important}
+.stage{position:fixed;inset:0;border:0;border-radius:0;aspect-ratio:auto;max-height:none;background:#000}
+#screen{border-radius:0}
+</style>
+
+<div class="wrap">
+  <p class="kicker">BYTE · SIMULADOR</p>
+  <h1>Simulador de Byte</h1>
+  <p class="lead">La Nube con su pantalla de 320 × 240, funcionando. Usa el mouse como si fuera tu dedo: toca la cara, desliza hacia abajo desde arriba para los ajustes rápidos y hacia arriba para el menú. En el panel puedes hablarle a Byte y ver qué haría el firmware real en cada paso.</p>
+
+  <div class="main">
+    <div>
+      <div class="stage" id="stage">
+        <div class="device" id="device">
+          <svg viewBox="-104 -70 210 126" aria-hidden="true">
+            <defs>
+              <clipPath id="cloudClip">
+                <ellipse cx="0" cy="0" rx="66" ry="52"/><ellipse cx="-60" cy="14" rx="38" ry="33"/><ellipse cx="62" cy="12" rx="40" ry="35"/>
+                <ellipse cx="-30" cy="-32" rx="36" ry="32"/><ellipse cx="26" cy="-36" rx="34" ry="30"/><ellipse cx="0" cy="28" rx="74" ry="24"/>
+                <circle cx="-38" cy="-6" r="20"/><circle cx="40" cy="-8" r="20"/>
+              </clipPath>
+              <radialGradient id="shade" cx="38%" cy="22%" r="85%">
+                <stop offset="0" stop-color="#34373c"/><stop offset=".45" stop-color="#1a1b1e"/><stop offset="1" stop-color="#0c0d0e"/>
+              </radialGradient>
+              <radialGradient id="face" cx="50%" cy="40%" r="60%">
+                <stop offset="0" stop-color="#1f2023"/><stop offset="1" stop-color="#151619"/>
+              </radialGradient>
+            </defs>
+            <rect x="-104" y="-70" width="210" height="126" fill="url(#shade)" clip-path="url(#cloudClip)"/>
+            <ellipse cx="0" cy="0" rx="50" ry="39" fill="url(#face)"/>
+            <rect x="-30.4" y="-23" width="60.8" height="46" rx="3.5" fill="#050506"/>
+            <circle cx="40" cy="20" r=".9" fill="#050506"/>
+          </svg>
+          <canvas id="screen" aria-label="Pantalla táctil de Byte: haz clic para tocar, arrastra para deslizar"></canvas>
+          <button class="pbtn" id="bUp" style="left:194px;top:61px" hidden aria-label="Subir volumen">+</button>
+          <button class="pbtn" id="bDown" style="left:194px;top:74px" hidden aria-label="Bajar volumen">−</button>
+          <button class="pbtn" id="bPow" style="left:192px;top:88px" hidden aria-label="Encender o apagar (mantener)">⏻</button>
+        </div>
+        <p class="hint" id="hint">Toca la cara · desliza ↓ desde arriba: ajustes rápidos · desliza ↑: menú</p>
+        <div class="stage-tools">
+          <label class="switch" title="Interruptor de encendido, debajo de la nube"><input type="checkbox" id="power" checked> Encendido</label>
+          <button class="btn" id="zoom" type="button">Ver la nube</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="lab">
+      <section class="card">
+        <h2>Háblale a Byte</h2>
+        <form class="say" id="sayForm"><input id="say" autocomplete="off" placeholder="Escribe lo que le dirías…" aria-label="Lo que le dices a Byte"><button class="btn primary" type="submit">Decir</button></form>
+        <div class="chips" id="chips"></div>
+        <p class="ai" id="aiNote">El simulador agrega la palabra "Byte" por ti, como si la dijeras en voz alta.</p>
+      </section>
+      <section class="card">
+        <h2>Situaciones</h2>
+        <div class="rows">
+          <label class="row">Wi-Fi conectado <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="wifi" checked></span></label>
+          <label class="row">Batería <input type="range" id="bat" min="0" max="100" value="85"></label>
+          <label class="row">Cargando por USB-C <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="charge"></span></label>
+          <div class="row">Modo juego: saltar a <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="go45" type="button">45 s</button><button class="btn" id="go3" type="button">3 min</button><button class="btn" id="go4" type="button">4 min</button></span></div>
+          <label class="row">Probar con botones físicos <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="physical"></span></label>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Lo que haría el firmware</h2>
+        <ul class="log" id="log"></ul>
+        <p class="legend"><b style="color:var(--accent);font-weight:500">Azul</b>: ya existe en XiaoZhi. <span class="new">Naranja</span>: pantalla o función nueva que habría que programar.</p>
+      </section>
+    </aside>
+  </div>
+
+  <section class="analysis">
+    <h2>Volumen sin botones: qué conviene</h2>
+    <p>Byte se maneja con la voz y la placa ya tiene pantalla táctil. Comparé las tres opciones pensando en la Nube impresa: que se vea limpia, que sea fácil de armar y que funcione bien todos los días. Puedes probar la opción A con el interruptor "Probar con botones físicos".</p>
+    <div class="opts">
+      <article class="opt">
+        <span class="tag">Opción A</span>
+        <h3>Tres botones: +, − y encendido</h3>
+        <ul>
+          <li>Se sube y baja el volumen sin mirar la pantalla.</li>
+          <li>Tres agujeros en la nube: se pierde la forma lisa.</li>
+          <li>Botones en una superficie curva: difíciles de alinear al imprimir.</li>
+          <li>Tres cables y tres pines más, con su soporte por dentro.</li>
+        </ul>
+      </article>
+      <article class="opt">
+        <span class="tag">Opción B</span>
+        <h3>Dos botones: + y −</h3>
+        <ul>
+          <li>Mismo control a ciegas para el volumen.</li>
+          <li>Sigue habiendo agujeros y cables nuevos.</li>
+          <li>No resuelve el encendido: con la pantalla apagada no hay cómo prenderla.</li>
+        </ul>
+      </article>
+      <article class="opt rec">
+        <span class="tag">Opción C · recomendada</span>
+        <h3>Pantalla + voz + un interruptor escondido</h3>
+        <ul>
+          <li><b class="pl">Volumen por voz:</b> "Byte, sube el volumen". XiaoZhi ya lo hace con su herramienta <code>self.audio_speaker.set_volume</code>.</li>
+          <li><b class="pl">Volumen en pantalla:</b> desliza hacia abajo y mueve la barra. Son dos gestos.</li>
+          <li><b class="pl">Un interruptor deslizante debajo de la nube</b> para encender y apagar de verdad. Reiniciar es apagar y prender, o tocar Reiniciar en Ajustes › Acerca de.</li>
+          <li>La nube queda lisa: nada que alinear al frente ni a los lados.</li>
+        </ul>
+      </article>
+    </div>
+    <p class="verdict"><b>Recomendación: opción C.</b> Es la más práctica y la que mejor respeta la forma de la Nube. La pantalla y la voz cubren el volumen, y el interruptor de abajo cubre lo único que la pantalla no puede hacer: prender un equipo apagado o sacarlo de un bloqueo. Falta confirmar con la placa si carga por USB-C con el interruptor apagado.</p>
+  </section>
+  <p class="foot">Simulación en el navegador. La cara, los estados y los colores son los mismos del firmware de Byte. El menú, el reloj, el temporizador y los ajustes rápidos son la propuesta de pantallas nuevas. Cuando las apruebes, las pasamos a LVGL en la placa.</p>
+</div>
+<script type="module">
+/* ---------- Cara animada (mismo diseño que el firmware: 240×240 escalado ×1,25) ---------- */
+const DEF = { shape: 'rect', w: 46, h: 62, r: 16, dx: 0, dy: 0, lidTop: 0, lidBot: 0 };
+const FACES = [
+  { id: 'reposo', name: 'Reposo', color: '#3ee6b0', anim: 'breathe', gaze: 1 },
+  { id: 'escucha', name: 'Escucha', color: '#f2ede1', eye: { w: 50, h: 70, r: 18 }, acc: ['ring'], anim: 'listen' },
+  { id: 'pensando', name: 'Pensando', color: '#a78bfa', eye: { h: 44, dx: 12, dy: -16 }, acc: ['dots'], anim: 'think' },
+  { id: 'hablando', name: 'Hablando', color: '#ffb238', eye: { h: 56 }, acc: ['mouth'], anim: 'talk', gaze: 1 },
+  { id: 'dormido', name: 'Dormido', color: '#6366f1', eye: { shape: 'closed' }, acc: ['zzz'], anim: 'sleep', blink: 0 },
+  { id: 'wifi', name: 'Sin Wi-Fi', color: '#fb923c', eye: { w: 40, h: 48, r: 14, dy: -10 }, acc: ['wifi'], anim: 'breathe' },
+  { id: 'mute', name: 'Mic apagado', color: '#ef4444', eye: { h: 30, r: 12, dy: -6 }, acc: ['mic'], anim: 'breathe', blink: 0 },
+  { id: 'exito', name: 'Éxito', color: '#4ade80', eye: { shape: 'arc' }, acc: ['check'], anim: 'hop' },
+  { id: 'feliz', name: 'Feliz', color: '#facc15', eye: { h: 56, lidBot: .42 }, anim: 'breathe', gaze: 1 },
+  { id: 'risa', name: 'Risa', color: '#a3e635', eye: { shape: 'arc', w: 50 }, acc: ['mouthOpen'], anim: 'laugh' },
+  { id: 'carino', name: 'Cariño', color: '#f472b6', eye: { shape: 'heart', w: 50 }, anim: 'beat' },
+  { id: 'cool', name: 'Cool', color: '#c0c7d4', eye: { h: 40, dy: -4 }, acc: ['glasses'], anim: 'breathe', blink: 0 },
+  { id: 'sorpresa', name: 'Sorpresa', color: '#e879f9', eye: { w: 56, h: 56, r: 28 }, acc: ['oMouth'], anim: 'none' },
+  { id: 'enfado', name: 'Enfado', color: '#e11d48', eye: { lidTop: 24 }, anim: 'shake' },
+  { id: 'tristeza', name: 'Tristeza', color: '#8e95b8', eye: { h: 56, dy: 8, lidTop: -20 }, acc: ['tear'], anim: 'sad' },
+  { id: 'oops', name: 'Oops', color: '#fdba74', eye: { dx: -4 }, R: { h: 38, w: 42, dy: 8 }, acc: ['sweat'], anim: 'wobble' },
+  { id: 'guino', name: 'Guiño', color: '#fb7185', R: { shape: 'arc', w: 46 }, anim: 'breathe', blink: 0 },
+];
+const byId = Object.fromEntries(FACES.map(f => [f.id, f]));
+const eyeOf = (f, side) => Object.assign({}, DEF, f.eye || {}, side === 'R' ? (f.R || {}) : (f.L || {}));
+const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const NUM = ['w', 'h', 'r', 'dx', 'dy', 'lidTop', 'lidBot'];
+const snap = f => ({ L: eyeOf(f, 'L'), R: eyeOf(f, 'R'), col: hex2rgb(f.color), face: f });
+const lerp = (a, b, k) => a + (b - a) * k;
+const CY = 108, BG = '#000'; let FACE_Y = 76.8;   // igual que el firmware
+
+function rrc(c, x, y, w, h, r) { r = Math.max(0, Math.min(r, w / 2, h / 2)); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function heart(c, cx, cy, s) { c.beginPath(); c.moveTo(cx, cy + s * .42); c.bezierCurveTo(cx - s * .62, cy, cx - s * .55, cy - s * .5, cx - s * .25, cy - s * .42); c.bezierCurveTo(cx - s * .08, cy - s * .38, cx, cy - s * .26, cx, cy - s * .18); c.bezierCurveTo(cx, cy - s * .26, cx + s * .08, cy - s * .38, cx + s * .25, cy - s * .42); c.bezierCurveTo(cx + s * .55, cy - s * .5, cx + s * .62, cy, cx, cy + s * .42); c.closePath(); }
+function drop(c, x, y, s) { c.beginPath(); c.moveTo(x, y - s); c.bezierCurveTo(x + s * .9, y + s * .1, x + s * .6, y + s * .9, x, y + s * .9); c.bezierCurveTo(x - s * .6, y + s * .9, x - s * .9, y + s * .1, x, y - s); c.fill(); }
+// Ojo "Eclipse": la píldora oscura con un toque del color, un sol con corona que
+// late y una luna negra que lo tapa y se corre despacio (más cuando escucha).
+// Igual que DrawEclipse() del firmware.
+function eclipse(c, cx, cy, w, h, side) {
+  const col = c.fillStyle, now = performance.now(), room = Math.min(w, h) / 2 - 1, sun = Math.min(w * .27, room);
+  c.globalAlpha = .12; c.fillRect(cx - w, cy - h, w * 2, h * 2); c.globalAlpha = 1;
+  if (room < 6) return;
+  const pulse = 1 + .06 * Math.sin(now * .002);
+  [[1, .14], [.8, .28], [.6, .5], [.42, .78]].forEach(([k, o]) => { c.globalAlpha = o; c.beginPath(); c.arc(cx, cy, Math.min(room, sun + (room - sun) * k * pulse), 0, 7); c.fill(); });
+  c.globalAlpha = 1; c.beginPath(); c.arc(cx, cy, sun, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(cx, cy, sun * .8, 0, 7); c.fill();
+  const listening = target && target.face && target.face.id === 'escucha';
+  const swing = listening ? .55 : .25 * Math.sin(now * .0004 + (side === 'L' ? 0 : .6));
+  c.fillStyle = BG; c.beginPath(); c.arc(cx + sun * swing * (side === 'L' ? -1 : 1), cy, sun * 1.02, 0, 7); c.fill();
+  c.fillStyle = col;
+}
+function drawEye(c, cx, cy, e, side, blink, beat, lid = 0) {
+  if (e.shape === 'rect') {
+    const h = Math.max(5, e.h * blink), w = e.w, x = cx - w / 2, y = cy - h / 2;
+    c.save(); rrc(c, x, y, w, h, e.r); c.clip(); eclipse(c, cx, cy, w, h, side); c.fillStyle = BG;
+    if (Math.abs(e.lidTop) > .5) { const t = Math.tan(e.lidTop * Math.PI / 180) * (side === 'L' ? 1 : -1), y0 = cy - e.h / 2 + e.h * .28; c.beginPath(); c.moveTo(cx - w, y0 - t * w); c.lineTo(cx + w, y0 + t * w); c.lineTo(cx + w, cy - e.h); c.lineTo(cx - w, cy - e.h); c.fill(); }
+    if (e.lidBot > .01) { const ry = w * .55; c.beginPath(); c.ellipse(cx, cy + h / 2 + ry + 2 - e.lidBot * e.h, w * .8, ry, 0, 0, Math.PI * 2); c.fill(); }
+    if (lid > .01) c.fillRect(x - 2, y - 2, w + 4, h * lid + 2);   // sueño: el párpado baja como una cortina
+    c.restore();
+  } else if (e.shape === 'arc') { c.save(); c.strokeStyle = c.fillStyle; c.lineWidth = 11; c.lineCap = 'round'; c.beginPath(); c.arc(cx, cy + e.w * .32, e.w * .46, Math.PI * 1.18, Math.PI * 1.82); c.stroke(); c.restore(); }
+  else if (e.shape === 'closed') { c.save(); c.strokeStyle = c.fillStyle; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.arc(cx, cy - e.w * .1, e.w * .4, Math.PI * .2, Math.PI * .8); c.stroke(); c.restore(); }
+  else if (e.shape === 'heart') { heart(c, cx, cy, e.w * 1.15 * beat); c.fill(); }
+}
+function drawAcc(c, a, t, col, alpha, gap) {
+  c.save(); c.globalAlpha *= alpha; c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
+  if (a === 'ring') { const p = (t % 1400) / 1400; c.lineWidth = 3; c.globalAlpha *= .55 * (1 - p); c.beginPath(); c.arc(120, CY + 6, 88 + p * 24, 0, Math.PI * 2); c.stroke(); }
+  if (a === 'dots') { for (let i = 0; i < 3; i++) { const b = Math.max(0, Math.sin(t / 180 - i * .9)); c.globalAlpha = alpha * (.35 + .65 * b); c.beginPath(); c.arc(100 + i * 20, 186 - b * 6, 6, 0, Math.PI * 2); c.fill(); } }
+  if (a === 'mouth') { const hs = [.6, 1, .8, 1, .6]; for (let i = 0; i < 5; i++) { const v = .25 + .75 * Math.abs(Math.sin(t / (110 + i * 23) + i * 1.7)) * hs[i]; const h = 6 + 22 * v; rrc(c, 93 + i * 12 - 3, 184 - h / 2, 7, h, 3.5); c.fill(); } }
+  if (a === 'mouthOpen') { const o = 1 + .08 * Math.sin(t / 70); c.beginPath(); c.arc(120, 176, 22 * o, 0, Math.PI); c.fill(); }
+  if (a === 'oMouth') { c.lineWidth = 6; c.beginPath(); c.ellipse(120, 186, 10, 12, 0, 0, Math.PI * 2); c.stroke(); }
+  if (a === 'check') { c.lineWidth = 7; c.beginPath(); c.moveTo(106, 186); c.lineTo(116, 196); c.lineTo(136, 174); c.stroke(); }
+  if (a === 'zzz') { c.lineWidth = 3; for (let i = 0; i < 3; i++) { const p = ((t / 2200) + i / 3) % 1, z = (12 + p * 12) * .7, x = 170 + p * 30, y = 80 - p * 44; c.globalAlpha = alpha * Math.sin(p * Math.PI); c.beginPath(); c.moveTo(x, y - z); c.lineTo(x + z, y - z); c.lineTo(x, y); c.lineTo(x + z, y); c.stroke(); } }
+  if (a === 'wifi') { c.lineWidth = 5; for (let i = 1; i <= 3; i++) { c.beginPath(); c.arc(120, 194, i * 11, Math.PI * 1.25, Math.PI * 1.75); c.stroke(); } c.beginPath(); c.arc(120, 192, 3.5, 0, Math.PI * 2); c.fill(); c.globalAlpha = alpha * (.55 + .45 * Math.sin(t / 300)); c.beginPath(); c.moveTo(98, 150); c.lineTo(142, 198); c.stroke(); }
+  if (a === 'mic') { c.lineWidth = 4; rrc(c, 112, 160, 16, 26, 8); c.fill(); c.beginPath(); c.arc(120, 178, 14, 0, Math.PI); c.stroke(); c.beginPath(); c.moveTo(120, 192); c.lineTo(120, 200); c.moveTo(110, 200); c.lineTo(130, 200); c.stroke(); c.strokeStyle = BG; c.lineWidth = 9; c.beginPath(); c.moveTo(100, 158); c.lineTo(140, 204); c.stroke(); c.strokeStyle = col; c.lineWidth = 4; c.stroke(); }
+  if (a === 'glasses') { const gx = gap / 2; c.beginPath(); [-1, 1].forEach(s => { const cx = 120 + s * gx; c.moveTo(cx - 34, CY - 26); c.lineTo(cx + 34, CY - 26); c.lineTo(cx + 28, CY + 16); c.quadraticCurveTo(cx, CY + 30, cx - 28, CY + 16); c.closePath(); }); c.fill(); c.lineWidth = 6; c.beginPath(); c.moveTo(120 - gx + 30, CY - 22); c.lineTo(120 + gx - 30, CY - 22); c.stroke(); }
+  if (a === 'tear') { const p = (t % 1800) / 1800; c.globalAlpha = alpha * (1 - p * .7); c.fillStyle = '#93c5fd'; drop(c, 120 - gap / 2 - 14, CY + 40 + p * 50, 7); }
+  if (a === 'sweat') { c.fillStyle = '#7dd3fc'; drop(c, 120 + gap / 2 + 34, CY - 44 + Math.sin(t / 400) * 3, 8); }
+  c.restore();
+}
+function animOf(n, t) {
+  const o = { dx: 0, dy: 0, s: 1, beat: 1 };
+  if (n === 'breathe') o.dy = Math.sin(t / 1300) * 2; else if (n === 'listen') o.s = 1 + .035 * Math.sin(t / 220);
+  else if (n === 'think') o.dx = Math.sin(t / 800) * 3; else if (n === 'talk') o.dy = -Math.abs(Math.sin(t / 170)) * 3;
+  else if (n === 'sleep') o.dy = Math.sin(t / 2000) * 3; else if (n === 'hop') o.dy = -Math.abs(Math.sin(t / 260)) * 5;
+  else if (n === 'laugh') o.dy = Math.sin(t / 55) * 2.5; else if (n === 'shake') o.dx = Math.sin(t / 38) * 1.3;
+  else if (n === 'sad') o.dy = Math.sin(t / 1800) * 2; else if (n === 'wobble') o.dx = Math.sin(t / 500) * 3;
+  else if (n === 'beat') { const p = (t % 900) / 900; o.beat = 1 + .12 * Math.max(0, Math.sin(p * Math.PI * 4)) * (p < .5 ? 1 : 0); }
+  return o;
+}
+/* ---------- Modo juego: lo que hace Byte cuando nadie le habla ----------
+   Igual que ByteFaceRenderer::ComputePlay() del firmware: cada juego dura 6 s,
+   entra y sale suave, y mueve, estira o aplasta los ojos (medidas del diseño 240×240). */
+const GAMES = [
+  { id: 'mosca', name: 'La mosca' }, { id: 'pong', name: 'Ping-pong' }, { id: 'saltitos', name: 'Saltitos' },
+  { id: 'bizco', name: 'Bizco' }, { id: 'vuelta', name: 'Vuelta' }, { id: 'silbando', name: 'Silbando' },
+];
+const GAME_MS = 6000;
+const play = { game: null, t0: 0, sleepy: 0 };
+function computePlay(now) {
+  const p = { env: 0, t: 0, dx: [0, 0], dy: [0, 0], sx: [1, 1], sy: [1, 1], fly: null, ball: null, yawn: 0, lid: 0 };
+  if (play.game && now - play.t0 >= GAME_MS) play.game = null;   // se acabó el juego
+  if (play.game) {
+    const t = (now - play.t0) / 1000; p.t = t;
+    p.env = Math.min(1, t / .4, (GAME_MS / 1000 - t) / .4);       // entra y sale en 0,4 s
+    const g = play.game;
+    if (g === 'mosca') { const fx = 120 + Math.sin(t * 1.7) * 96, fy = 100 + Math.sin(t * 2.9) * 34; p.fly = [fx, fy]; [0, 1].forEach(i => { p.dx[i] = (fx - 120) / 96 * 9; p.dy[i] = (fy - 100) / 34 * 7; }); }
+    if (g === 'pong') { const q = (t * .9) % 2, u = q < 1 ? q : 2 - q, bx = 120 - 44 + u * 88; p.ball = [bx, 72 - Math.sin(u * Math.PI) * 22]; [0, 1].forEach(i => { p.dx[i] = (bx - 120) / 60 * 5; p.dy[i] = -3; }); if (Math.min(u, 1 - u) < .06) { const i = u < .5 ? 0 : 1; p.sx[i] = 1.15; p.sy[i] = .8; } }
+    if (g === 'saltitos') [0, 1].forEach(i => { const ph = (t * 2.2 + i * .5) % 1; p.dy[i] = -Math.sin(ph * Math.PI) * 22; if (ph < .08 || ph > .92) { p.sx[i] = 1.2; p.sy[i] = .75; p.dy[i] += st[i ? 'R' : 'L'].h * (1 - p.sy[i]) / 2; } });
+    if (g === 'bizco') { const c = t % 3, k = c > 2.2 ? 0 : Math.min(1, c / 1.2); p.dx = [k * 18, -k * 18]; }
+    if (g === 'vuelta') { const a = t * 2.2; [0, 1].forEach(i => { p.dx[i] = Math.cos(a) * 14; p.dy[i] = Math.sin(a) * 12; }); }
+    if (g === 'silbando') { p.dx = [4, 4]; p.dy = [-8, -8]; }
+    [0, 1].forEach(i => { p.dx[i] *= p.env; p.dy[i] *= p.env; p.sx[i] = 1 + (p.sx[i] - 1) * p.env; p.sy[i] = 1 + (p.sy[i] - 1) * p.env; });
+  }
+  if (play.sleepy > 0) {
+    // Cada 9 s bosteza: la boca se abre y se cierra en 2,7 s y los ojos se aprietan
+    const ph = (now % 9000) / 9000;
+    p.yawn = play.sleepy > .3 && ph < .3 ? Math.sin(ph / .3 * Math.PI) : 0;
+    p.lid = Math.min(.95, play.sleepy + p.yawn * .25);
+  }
+  return p;
+}
+function drawPlay(c, p, col) {
+  c.save(); c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
+  if (p.fly) { const [fx, fy] = p.fly, wing = 1.2 + .6 * Math.abs(Math.sin(performance.now() / 25)); c.fillStyle = '#fff'; c.globalAlpha = p.env * .43; c.beginPath(); c.ellipse(fx - 3, fy - 3, 3, wing, 0, 0, 7); c.ellipse(fx + 3, fy - 3, 3, wing, 0, 0, 7); c.fill(); c.globalAlpha = p.env; c.beginPath(); c.arc(fx, fy, 2.6, 0, 7); c.fill(); }
+  if (p.ball) { c.fillStyle = '#fff'; c.globalAlpha = p.env; c.beginPath(); c.arc(p.ball[0], p.ball[1], 5, 0, 7); c.fill(); }
+  if (play.game === 'silbando') {
+    c.globalAlpha = p.env; c.beginPath(); c.arc(120, 182, 5, 0, 7); c.fill();
+    c.lineWidth = 2;
+    for (let k = 0; k < 3; k++) { const q = (p.t * .6 + k * .33) % 1, x = 176 + q * 30 + k * 5, y = 150 - q * 90; c.globalAlpha = (1 - q) * p.env; c.beginPath(); c.ellipse(x, y, 4.5, 3.5, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(x + 4, y); c.lineTo(x + 4, y - 14); c.lineTo(x + 10, y - 10); c.stroke(); }
+  }
+  if (p.yawn > 0) { c.globalAlpha = p.yawn; c.beginPath(); c.ellipse(120, 182, 9, 4 + 9 * p.yawn, 0, 0, 7); c.fill(); }
+  c.restore();
+}
+
+let fc = null, K = 1;   // fc: contexto del lienzo de la pantalla; K: píxeles reales por píxel de la pantalla 320×240
+let from = snap(byId.reposo), target = from, t0 = 0;
+const st = { ...snap(byId.reposo), k: 1, blink: 1, gx: 0, gy: 0, accOut: [] };
+let nextBlink = 1500, blinkT = -1, gazeT = 0, gazeTo = [0, 0], tourOn = false, tourT = 0;
+function setFace(id) {
+  const f = byId[id]; if (!f) return;
+  from = { L: { ...st.L }, R: { ...st.R }, col: [...st.col] };
+  st.accOut = (st.face.acc || []).filter(a => !(f.acc || []).includes(a));
+  target = snap(f); t0 = performance.now(); st.k = 0; st.face = f;
+  
+}
+function drawFace(now) {
+  const k = Math.min(1, (now - t0) / 260), e = 1 - Math.pow(1 - k, 3);
+  st.k = e;
+  ['L', 'R'].forEach(s => { NUM.forEach(n => st[s][n] = lerp(from[s][n], target[s][n], e)); st[s].shape = k < .5 ? from[s].shape : target[s].shape; });
+  st.col = from.col.map((c, i) => lerp(c, target.col[i], e));
+  if (k >= 1) st.accOut = [];
+  if (now > nextBlink && blinkT < 0) blinkT = now;
+  if (blinkT >= 0) { const p = (now - blinkT) / 150; st.blink = p < 1 ? Math.max(.08, Math.abs(1 - 2 * p)) : 1; if (p >= 1) { blinkT = -1; nextBlink = now + 2200 + Math.random() * 3200; } } else st.blink = 1;
+  if (target.face.gaze && !play.game) { if (now > gazeT) { gazeTo = Math.random() < .4 ? [0, 0] : [(Math.random() * 2 - 1) * 11, (Math.random() * 2 - 1) * 6]; gazeT = now + 1200 + Math.random() * 2400; } } else gazeTo = [0, 0];
+  st.gx += (gazeTo[0] - st.gx) * .18; st.gy += (gazeTo[1] - st.gy) * .18;
+  if (tourOn && now > tourT) { const i = (FACES.indexOf(target.face) + 1) % FACES.length; setFace(FACES[i].id); tourT = now + 2600; }
+
+  const f = target.face, a = animOf(f.anim, now), css = `rgb(${st.col.map(Math.round)})`, p = computePlay(now);
+  fc.setTransform(K, 0, 0, K, 0, 0); fc.globalAlpha = 1; fc.fillStyle = BG; fc.fillRect(0, 0, 320, 240);
+  // Igual que el firmware: centro x=160, ojos en y≈77, escala 1,25
+  const SC = 1.25; fc.setTransform(SC * K, 0, 0, SC * K, (160 - 120 * SC) * K, (FACE_Y - 108 * SC) * K);
+  fc.save(); fc.translate(120 + a.dx, CY + a.dy); fc.scale(a.s, a.s); fc.translate(-120, -CY);
+  const blink = f.blink !== 0 ? st.blink : 1;
+  ['L', 'R'].forEach((side, i) => {
+    const e = { ...st[side], w: st[side].w * p.sx[i], h: st[side].h * p.sy[i] };
+    const cx = 120 + (side === 'L' ? -1 : 1) * 44 + e.dx + st.gx + p.dx[i];
+    const cy = CY + e.dy + st.gy + p.dy[i] + play.sleepy * 4;   // con sueño mira un poco hacia abajo
+    fc.fillStyle = css; drawEye(fc, cx, cy, e, side, blink, a.beat, p.lid);
+  });
+  fc.restore();
+  st.accOut.forEach(x => drawAcc(fc, x, now, css, 1 - st.k, 88));
+  (f.acc || []).forEach(x => drawAcc(fc, x, now, css, st.k, 88));
+  drawPlay(fc, p, css);
+  fc.setTransform(K, 0, 0, K, 0, 0);
+}
+
+
+/* ================= Simulador de Byte ================= */
+const $ = id => document.getElementById(id);
+const stage = $('stage'), device = $('device'), canvas = $('screen');
+const ctx = canvas.getContext('2d'); fc = ctx;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = { text: '#e6eaee', muted: '#8a939b', dim: '#5b636b', panel: '#14171b', chip: '#1e2228', accent: '#3ee6b0', red: '#ef4444', purple: '#a78bfa', orange: '#fb923c', green: '#4ade80' };
+const FONT = '"IBM Plex Sans", system-ui, sans-serif';
+
+/* ---------- Estado del dispositivo ---------- */
+const S = {
+  power: 'on', bootT: 0,
+  dev: 'idle',                 // idle | listening | thinking | speaking | connecting
+  screen: 'home',              // home | menu | clock | timer | faces | settings | wifi | about
+  qp: 0, qpTo: 0,              // panel de ajustes rápidos (0 cerrado, 1 abierto)
+  volume: 70, brightness: 80, muted: false, dnd: false, wifi: true, battery: 85, charging: false,
+  expr: null, exprUntil: 0, sleeping: false, lastTouch: performance.now(), idleOffset: 0,
+  user: '', reply: '', replyT: 0, tool: '', hudUntil: 0, toast: '', toastUntil: 0,
+  timer: { total: 120, left: 120000, running: false, endAt: 0, ringing: 0 },
+  faceIdx: 0,
+};
+// Modo juego (igual que byte_face_display.cc): 45 s juega, 3 min le da sueño, 4 min duerme
+const PLAY_MS = 45 * 1000, SLEEPY_MS = 3 * 60 * 1000, SLEEP_MS = 4 * 60 * 1000;
+const PHASE_NAME = ['atento', 'jugando', 'con sueño', 'dormido'];
+let phase = 0, nextGame = 0, lastGame = null;
+
+/* ---------- Registro del firmware ---------- */
+const logEl = $('log');
+function log(txt, isNew) {
+  const li = document.createElement('li'); const t = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  li.innerHTML = `<span style="color:var(--muted)">${t}</span> ${isNew ? `<span class="new">${txt}</span>` : `<b>${txt}</b>`}`;
+  logEl.prepend(li); while (logEl.children.length > 60) logEl.lastChild.remove();
+}
+const STATE_NAME = { idle: 'kDeviceStateIdle', listening: 'kDeviceStateListening', speaking: 'kDeviceStateSpeaking', connecting: 'kDeviceStateConnecting' };
+function setDev(d) { if (S.dev === d) return; S.dev = d; if (STATE_NAME[d]) log(`Application → ${STATE_NAME[d]}`); }
+
+/* ---------- Sonido (Web Audio) y voz ---------- */
+let ac = null;
+function beep(freqs, dur = .09, gap = .02, force) {
+  if (S.power !== 'on' || (S.dnd && !force)) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    let t = ac.currentTime;
+    freqs.forEach(f => { const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.18 * S.volume / 100, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02); t += dur + gap; });
+  } catch (e) {}
+}
+let voice = null;
+function pickVoice() { try { const vs = speechSynthesis.getVoices(); voice = vs.find(v => /es[-_](CO|MX|US|419)/i.test(v.lang)) || vs.find(v => /^es/i.test(v.lang)) || null; } catch (e) {} }
+try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
+function speak(text, done) {
+  let finished = false; const end = () => { if (!finished) { finished = true; done(); } };
+  const est = Math.max(1800, text.length * 62), t0 = performance.now();
+  // Si el navegador no tiene voz, onend llega al instante: deja el subtítulo el tiempo de leerlo
+  const soon = () => { const el = performance.now() - t0; if (el < 900) setTimeout(end, est - el); else end(); };
+  try {
+    if (!('speechSynthesis' in window) || S.volume === 0) throw 0;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang = voice?.lang || 'es-ES'; if (voice) u.voice = voice;
+    u.volume = S.volume / 100; u.rate = 1.04; u.pitch = 1.3; u.onend = soon; u.onerror = soon;
+    speechSynthesis.speak(u); setTimeout(end, est + 6000);
+  } catch (e) { setTimeout(end, est); }
+}
+
+/* ---------- Qué cara mostrar (igual que ByteFaceDisplay::ChooseFace) ---------- */
+const EMO = { happy: 'feliz', relaxed: 'feliz', delicious: 'feliz', laughing: 'risa', funny: 'risa', loving: 'carino', kissy: 'carino', cool: 'cool', surprised: 'sorpresa', shocked: 'sorpresa', angry: 'enfado', sad: 'tristeza', crying: 'tristeza', embarrassed: 'oops', confused: 'oops', winking: 'guino', silly: 'guino', thinking: 'pensando', sleepy: 'dormido', confident: 'exito' };
+let shownFace = 'reposo';
+function chooseFace(now) {
+  if (S.screen === 'faces') return FACES[S.faceIdx].id;
+  if (S.dev === 'connecting' || S.dev === 'thinking') return 'pensando';
+  if (!S.wifi) return 'wifi';
+  if (S.dev === 'listening') return 'escucha';
+  if (S.dev === 'speaking') return S.expr || 'hablando';
+  if (S.timer.ringing) return 'sorpresa';
+  if (S.expr && now < S.exprUntil) return S.expr;
+  if (S.muted) return 'mute';
+  if (S.sleeping) return 'dormido';
+  return 'reposo';
+}
+
+/* ---------- Dibujo: ayudas ---------- */
+function rrect(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function text(t, x, y, size = 13, color = C.text, align = 'center', weight = 500) { ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(t, x, y); }
+function wrap(t, maxW, size) { ctx.font = `500 ${size}px ${FONT}`; const words = t.split(/\s+/); const lines = []; let cur = ''; words.forEach(w => { const n = cur ? cur + ' ' + w : w; if (ctx.measureText(n).width > maxW && cur) { lines.push(cur); cur = w; } else cur = n; }); if (cur) lines.push(cur); return lines; }
+const hits = [];
+const hit = (x, y, w, h, fn, drag) => hits.push({ x, y, w, h, fn, drag });
+
+// Iconos sencillos de línea
+function icon(name, x, y, s = 1, color = C.accent) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (name === 'clock') { ctx.arc(0, 0, 10, 0, 7); ctx.moveTo(0, -6); ctx.lineTo(0, 0); ctx.lineTo(4, 3); ctx.stroke(); }
+  if (name === 'timer') { ctx.arc(0, 2, 9, 0, 7); ctx.moveTo(-3, -10); ctx.lineTo(3, -10); ctx.moveTo(0, -10); ctx.lineTo(0, -7); ctx.moveTo(0, 2); ctx.lineTo(4, -2); ctx.stroke(); }
+  if (name === 'faces') { ctx.roundRect(-9, -7, 7, 12, 3); ctx.roundRect(2, -7, 7, 12, 3); ctx.fill(); }
+  if (name === 'gear') { for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.moveTo(Math.cos(a) * 7, Math.sin(a) * 7); ctx.lineTo(Math.cos(a) * 10.5, Math.sin(a) * 10.5); } ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, 7); ctx.stroke(); }
+  if (name === 'speaker') { ctx.moveTo(-8, -3); ctx.lineTo(-4, -3); ctx.lineTo(1, -7); ctx.lineTo(1, 7); ctx.lineTo(-4, 3); ctx.lineTo(-8, 3); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.arc(2, 0, 5, -.8, .8); ctx.stroke(); ctx.beginPath(); ctx.arc(2, 0, 9, -.8, .8); ctx.stroke(); }
+  if (name === 'sun') { ctx.arc(0, 0, 4, 0, 7); ctx.fill(); ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.moveTo(Math.cos(a) * 7, Math.sin(a) * 7); ctx.lineTo(Math.cos(a) * 9.5, Math.sin(a) * 9.5); } ctx.stroke(); }
+  if (name === 'mic') { ctx.roundRect(-3.5, -9, 7, 12, 3.5); ctx.fill(); ctx.beginPath(); ctx.arc(0, -1, 7, .1, Math.PI - .1); ctx.moveTo(0, 6); ctx.lineTo(0, 9); ctx.stroke(); }
+  if (name === 'moon') { ctx.arc(0, 0, 8, Math.PI * .35, Math.PI * 1.65); ctx.arc(4, -1, 6.5, Math.PI * 1.45, Math.PI * .55, true); ctx.closePath(); ctx.fill(); }
+  if (name === 'wifi') { ctx.lineWidth = 1.6; [3, 6, 9].forEach(r => { ctx.beginPath(); ctx.arc(0, 4, r, Math.PI * 1.22, Math.PI * 1.78); ctx.stroke(); }); ctx.beginPath(); ctx.arc(0, 4, 1.3, 0, 7); ctx.fill(); }
+  if (name === 'back') { ctx.lineWidth = 2.4; ctx.moveTo(4, -7); ctx.lineTo(-3, 0); ctx.lineTo(4, 7); ctx.stroke(); }
+  if (name === 'slash') { ctx.lineWidth = 2.4; ctx.moveTo(-9, -9); ctx.lineTo(9, 9); ctx.stroke(); }
+  ctx.restore();
+}
+
+/* ---------- Barra de estado: hora a la izquierda, iconos a la derecha ---------- */
+function statusBar(now) {
+  const d = new Date();
+  text(d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }), 10, 12, 12.5, C.text, 'left', 600);
+  let x = 310;
+  // batería
+  ctx.strokeStyle = C.muted; ctx.lineWidth = 1.2; rrect(x - 22, 7, 20, 10, 2.5); ctx.stroke(); ctx.fillStyle = C.muted; ctx.fillRect(x - 2, 10, 2, 4);
+  ctx.fillStyle = S.battery <= 15 && !S.charging ? C.red : S.charging ? C.green : C.text; rrect(x - 20.5, 8.5, 17 * S.battery / 100, 7, 1.5); ctx.fill();
+  if (S.charging) { ctx.fillStyle = '#000'; ctx.beginPath(); ctx.moveTo(x - 11, 8); ctx.lineTo(x - 15, 12.5); ctx.lineTo(x - 12, 12.5); ctx.lineTo(x - 13, 16); ctx.lineTo(x - 9, 11.5); ctx.lineTo(x - 12, 11.5); ctx.closePath(); ctx.fill(); }
+  text(`${S.battery}%`, x - 26, 12, 11, C.muted, 'right');
+  x -= 58;
+  icon('wifi', x, 11, .9, S.wifi ? C.text : C.dim); if (!S.wifi) icon('slash', x, 11, .6, C.orange);
+  x -= 18;
+  if (S.muted) { icon('mic', x, 12, .7, C.red); x -= 16; }
+  if (S.dnd) { icon('moon', x, 12, .7, C.purple); x -= 16; }
+  const st = S.dev === 'listening' ? 'Escuchando…' : S.dev === 'thinking' ? (S.tool || 'Pensando…') : S.dev === 'speaking' ? 'Hablando' : S.dev === 'connecting' ? 'Conectando…' : '';
+  if (st && S.screen === 'home') text(st, 160, 12, 11.5, C.muted);
+}
+function header(title, back = () => go('menu')) {
+  icon('back', 18, 40, 1, C.text); hit(0, 24, 54, 34, back);
+  text(title, 160, 40, 15, C.text, 'center', 600);
+}
+
+/* ---------- Pantallas ---------- */
+const MENU = [['clock', 'Reloj', 'clock'], ['timer', 'Temporizador', 'timer'], ['faces', 'Caras', 'faces'], ['gear', 'Ajustes', 'settings']];
+function go(screen) {
+  if (S.screen === screen) return;
+  S.screen = screen; S.lastTouch = performance.now();
+  const names = { menu: 'Menú', clock: 'Reloj', timer: 'Temporizador', faces: 'Galería de caras', settings: 'Ajustes', wifi: 'Wi-Fi', about: 'Acerca de', home: 'Cara principal' };
+  log(`ByteUi::Go → ${names[screen]}`);
+}
+function drawHome(now) {
+  // Subtítulos: lo que oyó Byte o lo que está diciendo (Display::SetChatMessage)
+  const msg = S.dev === 'speaking' ? S.reply : (S.dev === 'listening' || S.dev === 'thinking') ? S.user : '';
+  if (msg) {
+    const lines = wrap(msg, 290, 13.5);
+    let first = 0;
+    if (S.dev === 'speaking' && lines.length > 2) first = Math.min(lines.length - 2, Math.floor((now - S.replyT) / 2600));
+    lines.slice(first, first + 2).forEach((l, i) => text(l, 160, 205 + i * 18, 13.5, S.dev === 'speaking' ? C.text : C.muted));
+  } else if (S.timer.running) {
+    const m = Math.ceil(timerLeft(now) / 1000), t = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+    ctx.fillStyle = C.panel; rrect(124, 204, 72, 24, 12); ctx.fill(); icon('timer', 140, 216, .6, C.accent); text(t, 170, 216, 12.5, C.accent, 'center', 600);
+  } else if (!S.sleeping) { ctx.fillStyle = '#3a4048'; rrect(146, 230, 28, 4, 2); ctx.fill(); }
+  hit(0, 24, 320, 216, tapFace);
+  if (S.timer.running && !msg) hit(124, 200, 72, 32, () => go('timer'));
+}
+function drawMenu() {
+  header('Menú', () => go('home'));
+  MENU.forEach(([ic, label, scr], i) => {
+    const x = 40 + i * 80, y = 118;
+    ctx.fillStyle = C.chip; ctx.beginPath(); ctx.arc(x, y, 27, 0, 7); ctx.fill();
+    icon(ic, x, y, 1.2); text(label, x, y + 44, 12, C.text);
+    hit(x - 40, y - 36, 80, 92, () => { go(scr); beep([880], .04); });
+  });
+  text('Desliza desde arriba: volumen y brillo', 160, 220, 11, C.dim);
+}
+function drawClock(now) {
+  header('Reloj', () => go('menu'));
+  const d = new Date();
+  // Ojitos de Byte arriba, para que el reloj tenga su personalidad
+  const b = now % 4200 < 140 ? .2 : 1; ctx.fillStyle = C.accent; rrect(141, 74 - 7 * b, 14, 14 * b, 5); ctx.fill(); rrect(165, 74 - 7 * b, 14, 14 * b, 5); ctx.fill();
+  const hm = d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' }).replace(/\s?[ap]\.?\s?m\.?/i, '');
+  text(hm, 160, 128, 58, C.text, 'center', 600);
+  text(d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }), 160, 178, 14, C.muted);
+  text(d.getHours() < 12 ? 'a. m.' : 'p. m.', 160, 200, 12, C.dim);
+}
+function timerLeft(now) { const t = S.timer; return t.running ? Math.max(0, t.endAt - now) : t.left; }
+function drawTimer(now) {
+  header('Temporizador', () => go('menu'));
+  const t = S.timer, left = timerLeft(now), p = t.total ? left / (t.total * 1000) : 0, s = Math.ceil(left / 1000);
+  ctx.lineWidth = 6; ctx.strokeStyle = C.chip; ctx.beginPath(); ctx.arc(160, 124, 50, 0, 7); ctx.stroke();
+  ctx.strokeStyle = t.ringing ? C.orange : C.accent; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(160, 124, 50, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.stroke(); ctx.lineCap = 'butt';
+  text(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`, 160, 124, 30, C.text, 'center', 600);
+  if (!t.running) {
+    [[52, '−', -60], [268, '+', 60]].forEach(([x, l, d]) => { ctx.fillStyle = C.chip; ctx.beginPath(); ctx.arc(x, 124, 20, 0, 7); ctx.fill(); text(l, x, 123, 22, C.text); hit(x - 26, 98, 52, 52, () => { t.total = Math.max(60, Math.min(3600, Math.round(t.left / 60000) * 60 + d)); t.left = t.total * 1000; beep([660], .03); }); });
+    text('min', 52, 152, 10, C.dim); text('min', 268, 152, 10, C.dim);
+  }
+  const pill = (x, w, label, primary, fn) => { ctx.fillStyle = primary ? C.accent : C.chip; rrect(x - w / 2, 192, w, 32, 16); ctx.fill(); text(label, x, 208, 13.5, primary ? '#04252b' : C.text, 'center', 600); hit(x - w / 2, 188, w, 40, fn); };
+  if (t.ringing) pill(160, 130, 'Detener', true, stopRing);
+  else {
+    pill(104, 96, 'Reiniciar', false, () => { t.running = false; t.left = t.total * 1000; log('ByteUi::StopTimer()'); });
+    pill(214, 104, t.running ? 'Pausar' : 'Iniciar', true, () => { if (t.running) { t.left = timerLeft(performance.now()); t.running = false; log('ByteUi: temporizador en pausa'); } else startTimer(t.left / 1000); });
+  }
+}
+function startTimer(sec) {
+  const t = S.timer; if (sec >= 1) { if (!t.running && Math.abs(sec * 1000 - t.left) > 1) t.total = sec; t.left = sec * 1000; }
+  if (t.left <= 0) t.left = t.total * 1000;
+  t.running = true; t.endAt = performance.now() + t.left; t.ringing = 0;
+  log(`ByteUi::StartTimer(${Math.round(t.left / 1000)})`);
+}
+function stopRing() { S.timer.ringing = 0; S.timer.left = S.timer.total * 1000; S.lastTouch = performance.now(); }
+function drawFaces() {
+  header('Caras', () => go('menu'));
+  const f = FACES[S.faceIdx];
+  text(`${f.name}  ·  ${S.faceIdx + 1}/${FACES.length}`, 160, 222, 12.5, C.muted);
+  icon('back', 18, 130, 1.1, C.dim); ctx.save(); ctx.translate(302, 130); ctx.scale(-1, 1); icon('back', 0, 0, 1.1, C.dim); ctx.restore();
+  hit(0, 70, 70, 150, () => { S.faceIdx = (S.faceIdx + FACES.length - 1) % FACES.length; log(`Vista previa de la cara "${FACES[S.faceIdx].name}"`); });
+  hit(250, 70, 70, 150, () => { S.faceIdx = (S.faceIdx + 1) % FACES.length; log(`Vista previa de la cara "${FACES[S.faceIdx].name}"`); });
+}
+function toggle(x, y, on, color = C.accent) { ctx.fillStyle = on ? color : '#3a4048'; rrect(x, y - 9, 32, 18, 9); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(on ? x + 23 : x + 9, y, 7, 0, 7); ctx.fill(); }
+function drawSettings() {
+  header('Ajustes', () => go('menu'));
+  const rows = [
+    ['speaker', 'Volumen', `${S.volume} %`, () => openQP()],
+    ['sun', 'Brillo', `${S.brightness} %`, () => openQP()],
+    ['wifi', 'Wi-Fi', S.wifi ? 'Casa' : 'Sin conexión', null],
+    ['gear', 'Acerca de', '', () => go('about')],
+  ];
+  rows.forEach(([ic, label, val, fn], i) => {
+    const y = 76 + i * 33;
+    icon(ic, 24, y, .8, C.muted); text(label, 44, y, 14, C.text, 'left');
+    if (typeof val === 'boolean') toggle(274, y, val, C.purple); else text(val + (i === rows.length - 1 ? '  ›' : ''), 306, y, 13, C.muted, 'right');
+    if (i < rows.length - 1) { ctx.fillStyle = '#1f2329'; ctx.fillRect(16, y + 16, 288, 1); }
+    if (fn) hit(0, y - 16, 320, 32, fn);
+  });
+}
+function drawWifi() {
+  header('Wi-Fi', () => go('settings'));
+  icon('wifi', 160, 82, 2.2, S.wifi ? C.accent : C.orange);
+  text(S.wifi ? 'Conectado a "Casa"' : 'Sin conexión', 160, 124, 15, C.text, 'center', 600);
+  text(S.wifi ? 'Señal buena' : 'Byte mostrará la cara de Wi-Fi', 160, 146, 12.5, C.muted);
+  ctx.fillStyle = C.chip; rrect(80, 178, 160, 34, 17); ctx.fill(); text(S.wifi ? 'Desconectar (prueba)' : 'Conectar', 160, 195, 13, C.text, 'center', 600);
+  hit(80, 174, 160, 42, () => setWifi(!S.wifi));
+}
+function drawAbout() {
+  header('Acerca de', () => go('settings'));
+  [['Nombre', 'Byte'], ['Carcasa', 'Nube'], ['Firmware', 'XiaoZhi, rama de Byte'], ['Pantalla', '320 × 240, táctil'], ['Simulador', 'versión 2']].forEach(([k, v], i) => {
+    const y = 72 + i * 26; text(k, 24, y, 13, C.muted, 'left'); text(v, 296, y, 13, C.text, 'right');
+  });
+  ctx.fillStyle = C.chip; rrect(110, 198, 100, 30, 15); ctx.fill(); text('Reiniciar', 160, 213, 13.5, C.text, 'center', 600);
+  hit(106, 194, 108, 38, () => { log('Acerca de → Reiniciar (tocado dos veces)'); log('Application::Reboot()'); S.power = 'off'; setTimeout(powerOn, 500); });
+}
+// Ajustes rápidos: se deslizan desde arriba
+function openQP() { S.qpTo = 1; log('ByteUi::OpenQuick → ajustes rápidos'); }
+function drawQP(now) {
+  const k = S.qp, h = 130, y0 = -h + h * k;
+  ctx.fillStyle = `rgba(0,0,0,${.55 * k})`; ctx.fillRect(0, 0, 320, 240);
+  ctx.save(); ctx.translate(0, y0);
+  ctx.fillStyle = C.panel; rrect(0, -20, 320, h + 20, 18); ctx.fill();
+  statusBar(now);
+  const slider = (y, ic, val, set) => {
+    icon(ic, 26, y, .9, C.text);
+    ctx.fillStyle = '#2a2f36'; rrect(48, y - 11, 232, 22, 11); ctx.fill();
+    ctx.fillStyle = C.accent; rrect(48, y - 11, Math.max(22, 232 * val / 100), 22, 11); ctx.fill();
+    text(`${val}`, 296, y, 12, C.muted, 'center');
+    hit(40, y0 + y - 18, 250, 36, x => set(Math.round(Math.max(0, Math.min(100, (x - 48) / 232 * 100)))), true);
+  };
+  slider(48, 'speaker', S.volume, v => setVolume(v, 'pantalla'));
+  slider(86, 'sun', S.brightness, v => setBrightness(v, 'pantalla'));
+  ctx.fillStyle = '#3a4048'; rrect(146, 118, 28, 4, 2); ctx.fill();
+  ctx.restore();
+  if (k > .5) hit(0, y0 + h, 320, 240, () => { S.qpTo = 0; });
+}
+function drawHud(now) {
+  if (now > S.hudUntil || S.qp > .1) return;
+  const a = Math.min(1, (S.hudUntil - now) / 250);
+  ctx.save(); ctx.globalAlpha = a;
+  ctx.fillStyle = 'rgba(20,23,27,.92)'; rrect(276, 54, 32, 140, 16); ctx.fill();
+  ctx.fillStyle = '#2a2f36'; rrect(286, 64, 12, 100, 6); ctx.fill();
+  ctx.fillStyle = C.accent; const hh = 100 * S.volume / 100; rrect(286, 164 - hh, 12, Math.max(6, hh), 6); ctx.fill();
+  icon('speaker', 292, 180, .7, C.text);
+  ctx.restore();
+}
+function drawToast(now) {
+  if (now > S.toastUntil) return;
+  const a = Math.min(1, (S.toastUntil - now) / 250);
+  ctx.save(); ctx.globalAlpha = a; ctx.font = `600 12.5px ${FONT}`; const w = Math.max(S.screen === 'home' ? 0 : 190, ctx.measureText(S.toast).width + 28);
+  ctx.fillStyle = 'rgb(30,34,40)'; const ty = S.screen === 'home' ? 186 : 30; rrect(160 - w / 2, ty, w, 28, 14); ctx.fill(); text(S.toast, 160, ty + 14, 12.5, C.text, 'center', 600); ctx.restore();
+}
+function toast(t, ms = 2400) { S.toast = t; S.toastUntil = performance.now() + ms; log(`Display::ShowNotification("${t}")`); }
+
+/* ---------- Acciones (las mismas que puede pedir la IA) ---------- */
+function setVolume(v, from) {
+  v = Math.max(0, Math.min(100, Math.round(v))); if (v === S.volume && from !== 'voz') return;
+  S.volume = v; S.hudUntil = performance.now() + 1500;
+  if (from === 'voz') log(`MCP self.audio_speaker.set_volume {"volume": ${v}}`);
+  else if (from === 'botón') log(`[botón físico] AudioCodec::SetOutputVolume(${v})`, true);
+  else log(`[ajuste en pantalla] AudioCodec::SetOutputVolume(${v})`, true);
+  clearTimeout(setVolume.t); setVolume.t = setTimeout(() => beep([740], .05, 0, true), 120);
+}
+function setBrightness(v, from) {
+  v = Math.max(5, Math.min(100, Math.round(v))); S.brightness = v; applyBrightness();
+  log(from === 'voz' ? `MCP self.screen.set_brightness {"brightness": ${v}}` : `[ajuste en pantalla] Backlight::SetBrightness(${v})`, from !== 'voz');
+}
+function setMuted(m) { S.muted = m; log(m ? '[función nueva] Micrófono apagado: no escucha la palabra "Byte"' : '[función nueva] Micrófono encendido', true); if (m) toast('Micrófono apagado'); }
+function setDnd(d) { S.dnd = d; log(d ? '[función nueva] No molestar: sin sonidos de aviso' : '[función nueva] No molestar desactivado', true); }
+function setWifi(w) { S.wifi = w; $('wifi').checked = w; if (!w) { log('WifiBoard: sin conexión → modo de configuración'); toast('Sin Wi-Fi'); } else { setDev('connecting'); setTimeout(() => { setDev('idle'); toast('Conectado'); beep([660, 990]); }, 1400); } }
+function applyBrightness() {
+  const b = S.power !== 'on' ? 0 : S.sleeping ? Math.min(S.brightness, 15) : S.brightness;
+  canvas.style.filter = `brightness(${(.25 + .75 * b / 100).toFixed(2)})`;
+  canvas.style.opacity = S.power === 'off' ? 0 : 1;
+}
+
+/* ---------- Toques y gestos ---------- */
+let down = null;
+const toLocal = e => { const r = canvas.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * 320, (e.clientY - r.top) / r.height * 240]; };
+canvas.addEventListener('pointerdown', e => {
+  if (S.power !== 'on') return; canvas.setPointerCapture(e.pointerId);
+  const [x, y] = toLocal(e); down = { x, y, t: performance.now(), drag: null };
+  const h = [...hits].reverse().find(h => h.drag && x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+  if (h) { down.drag = h; h.fn(x, y); }
+});
+canvas.addEventListener('pointermove', e => { if (!down?.drag) return; const [x, y] = toLocal(e); down.drag.fn(x, y); });
+canvas.addEventListener('pointerup', e => {
+  if (!down) return; const [x, y] = toLocal(e), dx = x - down.x, dy = y - down.y, d0 = down; down = null;
+  S.lastTouch = performance.now(); S.idleOffset = 0;
+  if (S.sleeping) { S.sleeping = false; applyBrightness(); log('Toque: Byte despierta'); return; }
+  if (d0.drag) return;
+  if (S.timer.ringing) { stopRing(); return; }
+  if (Math.abs(dy) > 34 && Math.abs(dy) > Math.abs(dx)) {
+    if (dy > 0 && (d0.y < 60 || S.qp > .5)) { if (S.qpTo !== 1) openQP(); return; }
+    if (dy < 0 && S.qpTo === 1) { S.qpTo = 0; return; }
+    if (dy < 0 && S.screen === 'home') { go('menu'); return; }
+    if (dy > 0 && S.screen === 'menu') { go('home'); return; }
+  }
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && S.qpTo === 0) {
+    if (S.screen === 'faces') { S.faceIdx = (S.faceIdx + (dx < 0 ? 1 : FACES.length - 1)) % FACES.length; return; }
+    if (dx > 0 && S.screen !== 'home') { go({ menu: 'home', settings: 'menu', wifi: 'settings', about: 'settings' }[S.screen] || 'menu'); return; }
+  }
+  if (Math.hypot(dx, dy) < 12) { const h = [...hits].reverse().find(h => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h); if (h) h.fn(x, y); }
+});
+const TICKLE = ['feliz', 'risa', 'guino', 'carino', 'sorpresa'];
+let tickleI = 0;
+function tapFace() {
+  if (live.on) { liveTap(); return; }
+  if (S.dev !== 'idle') return;
+  const f = TICKLE[tickleI++ % TICKLE.length]; S.expr = f; S.exprUntil = performance.now() + 1800;
+  log(`Toque en la cara → cosquillas: cara "${byId[f].name}"`); beep([988, 1318], .05);
+}
+
+/* ---------- Encendido ---------- */
+function powerOn() {
+  S.power = 'boot'; S.bootT = performance.now(); S.screen = 'home'; S.qp = S.qpTo = 0; S.sleeping = false; applyBrightness();
+  log('Encendido: arranca el firmware'); setTimeout(() => { if (S.power !== 'boot') return; S.power = 'on'; applyBrightness(); setDev('connecting'); setTimeout(() => { if (S.power !== 'on') return; setDev('idle'); if (S.wifi) beep([660, 990]); else log('WifiBoard: sin conexión → modo de configuración'); }, 1500); }, 1600);
+}
+function powerOff(why) {
+  try { speechSynthesis.cancel(); } catch (e) {}
+  S.power = 'off'; S.dev = 'idle'; S.timer.running = false; applyBrightness(); $('power').checked = false; log(why || 'Interruptor apagado: la placa queda sin energía');
+}
+$('power').onchange = e => e.target.checked ? powerOn() : powerOff();
+
+/* ---------- Botones físicos (opción A, para comparar) ---------- */
+['bUp', 'bDown'].forEach((id, i) => $(id).onclick = () => { if (S.power === 'on') setVolume(S.volume + (i ? -10 : 10), 'botón'); });
+let powT = 0;
+$('bPow').onpointerdown = () => { powT = performance.now(); };
+$('bPow').onpointerup = () => { if (performance.now() - powT > 700) { if (S.power === 'on') powerOff('[botón físico] Apagado'); else { $('power').checked = true; powerOn(); } } else if (S.power === 'on') toast('Mantén presionado para apagar'); };
+$('physical').onchange = e => { ['bUp', 'bDown', 'bPow'].forEach(id => $(id).hidden = !e.target.checked); log(e.target.checked ? 'Probando la opción A: tres botones físicos' : 'Opción A oculta'); };
+
+/* ---------- Situaciones ---------- */
+$('wifi').onchange = e => setWifi(e.target.checked);
+$('bat').oninput = e => { S.battery = +e.target.value; };
+$('charge').onchange = e => { S.charging = e.target.checked; if (S.power === 'on') toast(S.charging ? 'Cargando' : 'Desconectado del cargador'); };
+// Saltar en el tiempo para ver el modo juego sin esperar
+[['go45', PLAY_MS], ['go3', SLEEPY_MS], ['go4', SLEEP_MS]].forEach(([id, ms]) => $(id).onclick = () => {
+  if (S.power !== 'on') return; S.screen = 'home'; S.qpTo = 0; S.expr = null;
+  S.idleOffset = ms - (performance.now() - S.lastTouch) + 50; log(`Saltamos a ${ms >= 60000 ? ms / 60000 + ' min' : ms / 1000 + ' s'} sin hablarle`);
+});
+
+/* ---------- Conversación: palabra "Byte" → escucha → piensa → habla ---------- */
+const CHIPS = ['¿Qué hora es?', 'Cuéntame un chiste', 'Sube el volumen', 'Pon un temporizador de 2 minutos', 'Baja el brillo', '¿Cómo estás?', 'Buenas noches'];
+CHIPS.forEach(c => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chipb'; b.textContent = c; b.onclick = () => talk(c); $('chips').append(b); });
+$('sayForm').onsubmit = e => { e.preventDefault(); const v = $('say').value.trim(); if (v) { talk(v); $('say').value = ''; } };
+let sample = null, aiOk = true;
+(async () => { try { sample = await window.claude?.use?.('sample'); } catch (e) { sample = null; } if (sample) $('aiNote').textContent = 'Responde la IA de verdad (Claude), con la personalidad de Byte. El simulador agrega la palabra "Byte" por ti.'; else $('aiNote').textContent = 'Modo de prueba: respuestas sencillas sin IA. El simulador agrega la palabra "Byte" por ti.'; })();
+const history = [];
+let busy = false;
+async function talk(said) {
+  if (S.power !== 'on') { log('Byte está apagado: no escucha'); return; }
+  if (busy) return;
+  if (S.muted) { toast('Micrófono apagado'); log('Micrófono apagado: la palabra "Byte" no se detecta'); return; }
+  busy = true; S.sleeping = false; S.qpTo = 0; S.screen = 'home'; S.lastTouch = performance.now(); S.idleOffset = 0; applyBrightness();
+  log('WakeWord: "byte" detectada'); beep([784, 1046], .07);
+  setDev('listening'); S.user = said; S.expr = null;
+  await wait(1100); log(`Display::SetChatMessage("user", "${said}")`);
+  S.dev = 'thinking'; log('Esperando respuesta del servidor…');
+  let r;
+  try { r = await askAI(said); } catch (e) { r = localReply(said); }
+  if (S.power !== 'on') { busy = false; return; }
+  const face = EMO[r.emotion]; S.expr = face || null;
+  if (r.emotion && r.emotion !== 'neutral') log(`Display::SetEmotion("${r.emotion}") → cara "${face ? byId[face].name : 'Hablando'}"`);
+  setDev('speaking'); S.reply = r.reply; S.replyT = performance.now(); log(`Display::SetChatMessage("assistant", "${r.reply}")`);
+  let after = null;
+  (r.actions || []).forEach(a => {
+    const v = Number(a.value);
+    if (a.name === 'set_volume' && isFinite(v)) setVolume(v, 'voz');
+    if (a.name === 'set_brightness' && isFinite(v)) setBrightness(v, 'voz');
+    if (a.name === 'start_timer' && isFinite(v) && v > 0) { startTimer(v); }
+    if (a.name === 'stop_timer') { S.timer.running = false; S.timer.left = S.timer.total * 1000; log('MCP self.byte.timer.stop'); }
+    if (a.name === 'sleep') after = 'sleep';
+    if (a.name === 'power_off') after = 'off';
+  });
+  speak(r.reply, () => {
+    if (S.power !== 'on') { busy = false; return; }
+    setDev('idle'); S.exprUntil = performance.now() + 4000; S.reply = ''; busy = false;
+    if (after === 'sleep') { S.idleOffset = SLEEP_MS; S.expr = null; }
+    if (after === 'off') setTimeout(() => powerOff('Byte se apagó por voz ("Byte, apágate")'), 600);
+  });
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
+function stateText() {
+  const d = new Date(), t = S.timer;
+  return `hora ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}, ${d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}; volumen ${S.volume}%; brillo ${S.brightness}%; temporizador ${t.running ? `corriendo, faltan ${Math.ceil(timerLeft(performance.now()) / 1000)} s` : 'detenido'}; batería ${S.battery}%${S.charging ? ' (cargando)' : ''}.`;
+}
+const RULES = `Eres Byte, un asistente de voz de escritorio con forma de nube negra y una pantalla con dos ojos que cambian de expresión. Hablas en español de Colombia, cálido, simpático y muy breve: máximo dos frases cortas, porque tu respuesta se lee en voz alta. No uses emojis ni listas.
+Puedes ejecutar acciones del dispositivo (como las herramientas MCP del firmware XiaoZhi): set_volume (value 0-100), set_brightness (value 5-100), start_timer (value en segundos), stop_timer, sleep (poner la pantalla a dormir) y power_off (apagarte, solo si te lo piden).
+Responde SOLO con un objeto JSON: {"reply": "lo que dices", "emotion": "una de: neutral, happy, laughing, loving, cool, surprised, sad, embarrassed, confused, winking, thinking, sleepy, confident", "actions": [{"name": "set_volume", "value": 80}]}. "actions" puede ser [].`;
+async function askAI(said) {
+  if (!sample || !aiOk) return localReply(said);
+  const turns = [{ role: 'user', content: RULES }, ...history.slice(-6), { role: 'user', content: `Estado del dispositivo: ${stateText()}\nEl usuario dice: "${said}"` }];
+  try {
+    const r = await sample.json(turns, { modelTier: 'quick', cache: false });
+    if (!r || typeof r.reply !== 'string' || !r.reply.trim()) throw { code: 'invalid' };
+    history.push({ role: 'user', content: `El usuario dice: "${said}"` }, { role: 'assistant', content: r.reply });
+    return { reply: r.reply.trim(), emotion: String(r.emotion || 'neutral'), actions: Array.isArray(r.actions) ? r.actions : [] };
+  } catch (e) {
+    if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(e?.code)) { aiOk = false; $('aiNote').textContent = 'Modo de prueba: respuestas sencillas sin IA.'; }
+    if (e?.code === 'rate_limited') $('aiNote').textContent = 'La IA pidió una pausa; mientras tanto respondo en modo de prueba.';
+    return localReply(said);
+  }
+}
+// Respuestas de prueba cuando la IA no está disponible
+function localReply(s) {
+  const t = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), num = +(t.match(/\d+/)?.[0] || 0);
+  if (/hora/.test(t)) return { reply: `Son las ${new Date().toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}.`, emotion: 'happy' };
+  if (/chiste/.test(t)) return { reply: '¿Qué le dijo una nube a otra? Nada, estaban en las nubes.', emotion: 'laughing' };
+  if (/volumen/.test(t)) { const v = num || (/baja|menos/.test(t) ? S.volume - 20 : S.volume + 20); return { reply: `Listo, volumen en ${Math.max(0, Math.min(100, v))}.`, emotion: 'confident', actions: [{ name: 'set_volume', value: v }] }; }
+  if (/brillo/.test(t)) { const v = num || (/baja|menos/.test(t) ? S.brightness - 30 : S.brightness + 30); return { reply: 'Hecho, ajusté el brillo.', emotion: 'cool', actions: [{ name: 'set_brightness', value: v }] }; }
+  if (/temporizador|alarma/.test(t)) { const sec = (num || 1) * (/segundo/.test(t) ? 1 : 60); return { reply: `Temporizador de ${/segundo/.test(t) ? sec + ' segundos' : (sec / 60) + (sec === 60 ? ' minuto' : ' minutos')} en marcha.`, emotion: 'confident', actions: [{ name: 'start_timer', value: sec }] }; }
+  if (/noches|duerme|dormir/.test(t)) return { reply: 'Buenas noches, que descanses.', emotion: 'sleepy', actions: [{ name: 'sleep' }] };
+  if (/apag/.test(t)) return { reply: 'Hasta luego, me apago.', emotion: 'sad', actions: [{ name: 'power_off' }] };
+  if (/hola|como estas/.test(t)) return { reply: '¡Hola! Estoy muy bien, flotando por aquí.', emotion: 'loving' };
+  return { reply: 'En el dispositivo real aquí te respondería la IA. En este modo de prueba solo sé lo básico.', emotion: 'confused' };
+}
+
+/* ---------- Escenario: tamaño y zoom ---------- */
+let full = false;
+const SCREEN_ONLY = !!document.querySelector('meta[name="byte-view"][content="screen"]');
+function layout() {
+  const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
+  let s, tx, ty;
+  if (SCREEN_ONLY) { s = Math.min(w, h * 4 / 3) / 58.05; tx = w / 2 - 104 * s; ty = h / 2 - 70 * s; }
+  else if (full) { s = Math.min(w / 222, h / 140); tx = w / 2 - 104 * s; ty = h / 2 - 66 * s; }
+  else { s = Math.min(w * (w < 600 ? .9 : .7), h * .78 * 4 / 3, 520) / 58.05; tx = w / 2 - 104 * s; ty = h / 2 - 70 * s; }
+  device.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  const dpr = Math.min(3, window.devicePixelRatio || 1), bw = Math.round(58.05 * s * dpr);
+  if (canvas.width !== bw) { canvas.width = bw; canvas.height = Math.round(bw * .75); K = bw / 320; }
+}
+$('zoom').onclick = () => { full = !full; $('zoom').textContent = full ? 'Acercar la pantalla' : 'Ver la nube'; layout(); };
+new ResizeObserver(layout).observe(stage); layout();
+
+/* ---------- Bucle ---------- */
+let lastSleepCheck = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  hits.length = 0;
+  ctx.setTransform(K, 0, 0, K, 0, 0);
+  if (S.power === 'off') { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240); return; }
+  if (S.power === 'boot') {
+    const p = (now - S.bootT) / 1600; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240);
+    ctx.globalAlpha = Math.sin(Math.min(1, p) * Math.PI); ctx.font = `800 46px "Baloo 2", ${FONT}`; ctx.fillStyle = C.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Byte', 160, 116); ctx.globalAlpha = 1; return;
+  }
+  // temporizador
+  const t = S.timer;
+  if (t.running && now >= t.endAt) { t.running = false; t.left = 0; t.ringing = now; S.screen = 'timer'; S.qpTo = 0; S.sleeping = false; applyBrightness(); toast('¡Tiempo!', 4000); log('Display::ShowNotification("¡Tiempo!") + pitidos hasta 15 s'); }
+  if (t.ringing && Math.floor((now - t.ringing) / 900) !== Math.floor((now - 16 - t.ringing) / 900)) beep([1046, 1318, 1046], .08);
+  if (t.ringing && now - t.ringing > 15000) stopRing();
+  // Modo juego: cuenta desde lo último que pasó (hablarle o tocarlo)
+  const idleFor = now - S.lastTouch + S.idleOffset;
+  const quiet = S.dev === 'idle' && !t.ringing && !(S.expr && now < S.exprUntil) && !S.muted && S.wifi && S.screen !== 'faces';
+  const ph = !quiet ? 0 : idleFor >= SLEEP_MS ? 3 : idleFor >= SLEEPY_MS ? 2 : idleFor >= PLAY_MS ? 1 : 0;
+  if (ph !== phase) { log(`[función nueva] Modo juego: ${PHASE_NAME[phase]} → ${PHASE_NAME[ph]}`, true); phase = ph; }
+  if (phase === 1 && S.screen === 'home' && S.qpTo === 0) {
+    if (now >= nextGame) {
+      // Al azar, pero nunca el mismo dos veces seguidas; uno nuevo cada 8 a 15 s
+      let g; do g = GAMES[Math.floor(Math.random() * GAMES.length)]; while (g.id === lastGame);
+      lastGame = g.id; play.game = g.id; play.t0 = now; nextGame = now + 8000 + Math.random() * 7000;
+      log(`Juego: ${g.name}`, true);
+    }
+  } else { nextGame = 0; if (phase === 0) play.game = null; }
+  play.sleepy = phase === 2 ? .95 * (idleFor - SLEEPY_MS) / (SLEEP_MS - SLEEPY_MS) : 0;
+  if ((phase === 3) !== S.sleeping) { S.sleeping = phase === 3; applyBrightness(); if (S.sleeping) log('Se durmió: cara "Dormido" y brillo al 15 %'); }
+  // cara
+  const want = chooseFace(now); if (want !== shownFace) { shownFace = want; setFace(want); }
+  S.qp += (S.qpTo - S.qp) * (reduceMotion ? 1 : .22); if (Math.abs(S.qp - S.qpTo) < .01) S.qp = S.qpTo;
+  const showFace = ['home', 'faces'].includes(S.screen);
+  if (showFace) drawFace(now); else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240); }
+  ctx.setTransform(K, 0, 0, K, 0, 0);
+  if (S.screen === 'home') drawHome(now); else if (S.screen === 'menu') drawMenu(); else if (S.screen === 'clock') drawClock(now); else if (S.screen === 'timer') drawTimer(now);
+  else if (S.screen === 'faces') drawFaces(); else if (S.screen === 'settings') drawSettings(); else if (S.screen === 'wifi') drawWifi(); else if (S.screen === 'about') drawAbout();
+  if (S.qp < .02) statusBar(now);
+  if (S.qp > .01) { hits.length = 0; drawQP(now); }
+  drawHud(now); drawToast(now);
+}
+/* ---------- En vivo: la pantalla sigue a Byte del PC (py-xiaozhi) ----------
+   Solo cuando la página la sirve el propio PC (herramientas/pc/byte_pantalla.py).
+   Llegan los mismos mensajes que recibe la placa desde la nube:
+   estado (escuchando/hablando), lo que oyó (stt), la emoción (llm) y cada frase (tts). */
+const LIVE_URL = 'http://127.0.0.1:8765';
+// Lo que dice arriba la pantalla mientras Byte usa cada herramienta
+const HERRAMIENTAS = { buscar_en_internet: 'Buscando…', noticias: 'Buscando noticias…', clima: 'Mirando el clima…',
+  spotify_poner: 'Poniendo música…', spotify_control: 'Música…', spotify_volumen: 'Música…', spotify_que_suena: 'Mirando Spotify…',
+  handle_exit_intent: 'Despidiéndome…', get_lunar: 'Mirando el calendario…' };
+const live = { on: false, enabled: location.origin === LIVE_URL };
+function liveWake() { S.sleeping = false; S.lastTouch = performance.now(); S.idleOffset = 0; applyBrightness(); }
+function onLive(m) {
+  const now = performance.now();
+  if (m.type === 'state') {
+    if (m.state === 'listening') {
+      if (S.dev !== 'listening' && S.dev !== 'thinking') { S.user = ''; S.reply = ''; S.expr = null; S.screen = 'home'; S.qpTo = 0; }
+      if (S.dev !== 'thinking') setDev('listening');
+    } else if (m.state === 'speaking') {
+      // La central avisa "voy a hablar" apenas te entiende, pero la voz llega
+      // después (piensa, busca...). "Hablando" se pone con la primera frase.
+      if (S.dev !== 'speaking') setDev('thinking');
+    } else {
+      S.tool = '';
+      if (S.dev === 'speaking') S.exprUntil = now + 4000;
+      S.reply = ''; S.user = ''; setDev('idle');
+    }
+    liveWake();
+  } else if (m.type === 'stt' && m.text && m.text.startsWith('% ')) {
+    // La central usa una herramienta: "% buscar_en_internet", "% spotify_poner"...
+    const h = m.text.slice(2).trim(); S.tool = HERRAMIENTAS[h] || (h.startsWith('spotify') ? 'Música…' : 'Buscando…');
+    if (S.dev !== 'speaking') setDev('thinking'); log(`Herramienta: ${h} → "${S.tool}"`);
+    liveWake();
+  } else if (m.type === 'stt' && m.text) {
+    S.user = m.text; S.tool = ''; log(`Display::SetChatMessage("user", "${m.text}")`);
+    if (S.dev === 'listening') S.dev = 'thinking';
+    liveWake();
+  } else if (m.type === 'llm' && m.emotion) {
+    const face = EMO[m.emotion]; S.expr = face || null;
+    if (m.emotion !== 'neutral') log(`Display::SetEmotion("${m.emotion}") → cara "${face ? byId[face].name : 'Hablando'}"`);
+  } else if (m.type === 'tts' && m.state === 'sentence_start' && m.text) {
+    S.tool = ''; setDev('speaking'); liveWake();
+    S.reply = m.text; S.replyT = now; log(`Display::SetChatMessage("assistant", "${m.text}")`);
+  }
+}
+function liveTap() {
+  // Como en la placa: tocar la cara empieza a conversar, o corta lo que esté pasando
+  fetch(LIVE_URL + '/tap', { method: 'POST' }).catch(() => {});
+  beep([784, 1046], .05);
+}
+function liveConnect() {
+  const es = new EventSource(LIVE_URL + '/events');
+  es.onopen = () => { live.on = true; S.wifi = true; toast('Conectado'); beep([660, 990]); log('En vivo: conectado a Byte del PC'); };
+  es.onerror = () => { if (live.on) { live.on = false; S.wifi = false; S.reply = ''; S.user = ''; setDev('idle'); toast('Byte del PC está cerrado'); log('En vivo: se cerró Byte del PC'); } };
+  es.onmessage = e => { try { onLive(JSON.parse(e.data)); } catch (err) {} };
+}
+if (live.enabled) liveConnect();
+
+log('Simulador listo. Byte arranca en reposo.');
+if (!live.enabled) { setDev('connecting'); setTimeout(() => setDev('idle'), 1200); }
+applyBrightness(); requestAnimationFrame(frame);
+</script>
+</html>

@@ -47,10 +47,19 @@ private:
     uint32_t last_touch_ = 0;
     int tickle_ = 0;
 
+    // Modo juego: lo que hace Byte cuando nadie le habla
+    enum IdlePhase { kAwake, kPlaying, kSleepy, kAsleep };
+    IdlePhase phase_ = kAwake;
+    uint32_t quiet_ms_ = 0;      // cuánto lleva sin que le hablen ni lo toquen
+    uint32_t next_game_ = 0;     // cuándo empieza el próximo juego (0 = ya)
+    ByteGame last_game_ = GAME_NONE;
+    bool dimmed_ = false;        // ¿bajamos el brillo porque se durmió?
+
     static void OnTimer(lv_timer_t* timer);
     static void OnDraw(lv_event_t* e);
     static void OnTouchRead(lv_indev_t* indev, lv_indev_data_t* data);
     const byte_face_t* ChooseFace(uint32_t now);
+    void UpdateIdleLife(uint32_t now);
     void OnHomeTap();
     ByteUiHost MakeUiHost();
 };

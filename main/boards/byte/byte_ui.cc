@@ -21,7 +21,7 @@ namespace {
 // Colores: los mismos del simulador
 constexpr uint32_t kText = 0xe6eaee, kMuted = 0x8a939b, kDim = 0x5b636b;
 constexpr uint32_t kPanel = 0x14171b, kChip = 0x1e2228, kTrack = 0x2a2f36, kLine = 0x1f2329;
-constexpr uint32_t kCyan = 0x22d3ee, kOrange = 0xfb923c, kOnCyan = 0x04252b;
+constexpr uint32_t kAccent = 0x3ee6b0, kOrange = 0xfb923c, kOnAccent = 0x04261c;
 
 const lv_font_t* const kFont = &font_noto_sans_basic_20_4;
 const lv_font_t* const kSmall = &font_noto_sans_basic_16_4;
@@ -208,12 +208,12 @@ void ByteUi::BuildMenu() {
         Fill(circle, kChip, LV_RADIUS_CIRCLE);
         lv_obj_align(circle, LV_ALIGN_TOP_MID, 0, 5);
         if (items[i].icon != nullptr) {
-            lv_obj_center(Text(circle, items[i].icon, kIconBig, kCyan));
+            lv_obj_center(Text(circle, items[i].icon, kIconBig, kAccent));
         } else {
             for (int side = -1; side <= 1; side += 2) {
                 lv_obj_t* eye = Plain(circle);
                 lv_obj_set_size(eye, 10, 16);
-                Fill(eye, kCyan, 4);
+                Fill(eye, kAccent, 4);
                 lv_obj_align(eye, LV_ALIGN_CENTER, side * 8, 0);
             }
         }
@@ -235,7 +235,7 @@ void ByteUi::BuildClock() {
     for (int i = 0; i < 2; i++) {
         clock_eyes_[i] = Plain(s);
         lv_obj_set_size(clock_eyes_[i], 14, 14);
-        Fill(clock_eyes_[i], kCyan, 5);
+        Fill(clock_eyes_[i], kAccent, 5);
         Place(clock_eyes_[i], 148 + i * 24, 60);
     }
     clock_time_ = Text(s, "--:--", kHuge, kText);
@@ -250,7 +250,7 @@ void ByteUi::BuildTimer() {
     lv_obj_t* s = NewScreen(kTimer, true);
     Header(s, "Temporizador");
 
-    // Anillo: la parte cian es el tiempo que falta
+    // Anillo: la parte de color es el tiempo que falta
     timer_arc_ = lv_arc_create(s);
     lv_obj_set_size(timer_arc_, 108, 108);
     Place(timer_arc_, 160, 126);
@@ -263,7 +263,7 @@ void ByteUi::BuildTimer() {
     lv_obj_set_style_arc_width(timer_arc_, 6, LV_PART_MAIN);
     lv_obj_set_style_arc_width(timer_arc_, 6, LV_PART_INDICATOR);
     lv_obj_set_style_arc_color(timer_arc_, lv_color_hex(kChip), LV_PART_MAIN);
-    lv_obj_set_style_arc_color(timer_arc_, lv_color_hex(kCyan), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(timer_arc_, lv_color_hex(kAccent), LV_PART_INDICATOR);
     lv_obj_set_style_arc_rounded(timer_arc_, true, LV_PART_INDICATOR);
 
     timer_label_ = Text(s, "2:00", kNumbers, kText);
@@ -285,10 +285,10 @@ void ByteUi::BuildTimer() {
     auto pill = [&](Action action, int cx, int w, bool primary, const char* label) {
         lv_obj_t* b = Button(s, action);
         lv_obj_set_size(b, w, 34);
-        Fill(b, primary ? kCyan : kChip, 17);
+        Fill(b, primary ? kAccent : kChip, 17);
         lv_obj_set_style_bg_opa(b, LV_OPA_80, LV_STATE_PRESSED);
         Place(b, cx, 207);
-        lv_obj_t* l = Text(b, label, kSmall, primary ? kOnCyan : kText);
+        lv_obj_t* l = Text(b, label, kSmall, primary ? kOnAccent : kText);
         lv_obj_center(l);
         return b;
     };
@@ -307,8 +307,8 @@ void ByteUi::BuildTimer() {
     lv_obj_set_style_pad_column(timer_chip_, 4, 0);
     lv_obj_set_flex_flow(timer_chip_, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(timer_chip_, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    Text(timer_chip_, MATERIAL_SYMBOLS_ALARM, kIcon, kCyan);
-    timer_chip_label_ = Text(timer_chip_, "", kSmall, kCyan);
+    Text(timer_chip_, MATERIAL_SYMBOLS_ALARM, kIcon, kAccent);
+    timer_chip_label_ = Text(timer_chip_, "", kSmall, kAccent);
     lv_obj_align(timer_chip_, LV_ALIGN_BOTTOM_MID, 0, -12);  // abajo, lejos de los ojos
     lv_obj_add_flag(timer_chip_, LV_OBJ_FLAG_HIDDEN);
 }
@@ -396,7 +396,7 @@ lv_obj_t* ByteUi::QuickSlider(int y, const char* icon, lv_obj_t** value_label) {
     lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(slider, 11, LV_PART_MAIN);
     lv_obj_set_style_pad_all(slider, 0, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(slider, lv_color_hex(kCyan), LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(slider, lv_color_hex(kAccent), LV_PART_INDICATOR);
     lv_obj_set_style_radius(slider, 11, LV_PART_INDICATOR);
     // Sin perilla: toda la barra se arrastra
     lv_obj_set_style_bg_opa(slider, LV_OPA_TRANSP, LV_PART_KNOB);
@@ -475,7 +475,7 @@ void ByteUi::Do(Action action) {
                 reboot_armed_until_ = lv_tick_get() + kRebootArmMs;
                 lv_obj_set_width(reboot_button_, 250);
                 lv_obj_set_style_bg_color(reboot_button_, lv_color_hex(kOrange), 0);
-                lv_obj_set_style_text_color(reboot_label_, lv_color_hex(kOnCyan), 0);
+                lv_obj_set_style_text_color(reboot_label_, lv_color_hex(kOnAccent), 0);
                 SetText(reboot_label_, "Toca otra vez para reiniciar");
             }
             break;
@@ -755,7 +755,7 @@ void ByteUi::RefreshTimer() {
     if (lv_arc_get_value(timer_arc_) != value) {
         lv_arc_set_value(timer_arc_, value);
     }
-    lv_obj_set_style_arc_color(timer_arc_, lv_color_hex(ringing_ ? kOrange : kCyan), LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(timer_arc_, lv_color_hex(ringing_ ? kOrange : kAccent), LV_PART_INDICATOR);
 
     bool idle = !running_ && !ringing_;
     for (int i = 0; i < 2; i++) {

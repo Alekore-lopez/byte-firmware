@@ -38,7 +38,20 @@ Cuándo sale cada cara:
 
 - **Escucha** al oír "Byte", **Pensando** mientras conecta, **Hablando** mientras responde.
 - Si la IA manda una emoción (`happy`, `sad`, `angry`…), Byte la pone mientras habla, con la boca de barras encima, y la mantiene 4 s al terminar.
-- **Reposo** al esperar y **Dormido** tras 5 min sin uso. **Sin Wi-Fi** en modo configuración.
+- **Reposo** al esperar. **Sin Wi-Fi** en modo configuración.
+
+### Modo juego: cuando nadie le habla
+
+Byte se porta como una mascota. El reloj cuenta desde la última vez que le hablaste o tocaste la pantalla:
+
+| Tiempo quieto | Qué hace |
+|---|---|
+| 0 a 45 s | **Atento**: ojos en reposo, respira, parpadea y mira a los lados. |
+| 45 s a 3 min | **Juega**: cada 8 a 15 s elige al azar uno de 6 juegos de 6 s (la mosca, ping-pong, saltitos, bizco, vuelta, silbando). Nunca repite el mismo dos veces seguidas. |
+| 3 a 4 min | **Le da sueño**: los párpados bajan de a poco y bosteza cada 9 s. |
+| desde 4 min | **Duerme**: cara Dormido con "zzz" y el brillo baja al 15 % (sin guardarlo). |
+
+Si dices "Byte" o tocas la pantalla en cualquier momento, deja todo, vuelve el brillo que tenías y te atiende. Los tiempos están al inicio de `byte_face_display.cc` (`kPlayAfterMs`, `kSleepyAfterMs`, `kSleepAfterMs`) y los juegos en `ByteFaceRenderer::ComputePlay()`. En el monitor serie verás `Modo juego: atento -> jugando` en cada cambio.
 
 La barra de estado de arriba y los subtítulos de abajo siguen igual, porque ahí salen el código de activación y los datos del wifi.
 

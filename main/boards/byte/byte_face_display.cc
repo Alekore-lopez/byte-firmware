@@ -1,5 +1,6 @@
 #include "byte_face_display.h"
 
+#include <algorithm>
 #include <cstring>
 #include <esp_app_desc.h>
 #include <esp_log.h>
@@ -15,7 +16,18 @@ namespace {
 
 constexpr uint32_t kFrameMs = 33;                     // ~30 cuadros por segundo
 constexpr uint32_t kExpressionLingerMs = 4000;        // la expresión se queda 4 s al terminar de hablar
-constexpr uint32_t kSleepAfterMs = 5 * 60 * 1000;     // a los 5 min sin uso, Byte se duerme
+// Modo juego: qué hace Byte cuando nadie le habla ni lo toca
+constexpr uint32_t kPlayAfterMs = 45 * 1000;          // a los 45 s se pone a jugar
+constexpr uint32_t kSleepyAfterMs = 3 * 60 * 1000;    // a los 3 min le da sueño
+constexpr uint32_t kSleepAfterMs = 4 * 60 * 1000;     // a los 4 min se duerme
+constexpr uint32_t kGameGapMinMs = 8000;              // un juego nuevo cada 8 a 15 s
+constexpr uint32_t kGameGapMaxMs = 15000;
+constexpr int kSleepBrightness = 15;                  // brillo (%) mientras duerme
+
+const char* PhaseName(int phase) {
+    static const char* kNames[] = {"atento", "jugando", "con sueño", "dormido"};
+    return kNames[phase];
+}
 
 const byte_face_t* FindFace(const char* id) {
     for (const auto& face : kByteFaces) {
@@ -209,6 +221,8 @@ const byte_face_t* ByteFaceDisplay::ChooseFace(uint32_t now) {
         last_state_ = state;
     }
 
+    phase_ = kAwake;  // si no está quieto en reposo, está atento
+
     // En la galería manda la cara elegida
     if (preview_ != nullptr) {
         renderer_.SetTalking(false);
@@ -238,10 +252,16 @@ const byte_face_t* ByteFaceDisplay::ChooseFace(uint32_t now) {
                 return expression_;
             }
             expression_ = nullptr;
-            // Se duerme si pasan 5 min sin hablarle ni tocarlo
-            uint32_t untouched = now - last_touch_;
-            bool sleepy = idle > kSleepAfterMs && untouched > kSleepAfterMs;
-            return FindFace(sleepy ? "dormido" : "reposo");
+            // Modo juego: cuenta desde lo último que pasó (hablarle o tocarlo)
+            quiet_ms_ = std::min(idle, now - last_touch_);
+            if (quiet_ms_ >= kSleepAfterMs) {
+                phase_ = kAsleep;
+            } else if (quiet_ms_ >= kSleepyAfterMs) {
+                phase_ = kSleepy;
+            } else if (quiet_ms_ >= kPlayAfterMs) {
+                phase_ = kPlaying;
+            }
+            return FindFace(phase_ == kAsleep ? "dormido" : "reposo");
         }
     }
 }
@@ -250,11 +270,62 @@ const byte_face_t* ByteFaceDisplay::ChooseFace(uint32_t now) {
 void ByteFaceDisplay::OnTimer(lv_timer_t* timer) {
     auto self = static_cast<ByteFaceDisplay*>(lv_timer_get_user_data(timer));
     uint32_t now = lv_tick_get();
+    IdlePhase before = self->phase_;
     self->renderer_.SetFace(self->ChooseFace(now), now);
+    if (self->phase_ != before) {
+        ESP_LOGI(TAG, "Modo juego: %s -> %s", PhaseName(before), PhaseName(self->phase_));
+    }
+    self->UpdateIdleLife(now);
 
     lv_area_t dirty;
     if (self->renderer_.Update(now, &dirty)) {
         lv_obj_invalidate_area(self->face_, &dirty);
+    }
+}
+
+// Modo juego: elige juegos al azar, baja los párpados con el sueño y baja
+// el brillo cuando se duerme. Corre en cada cuadro, después de ChooseFace().
+void ByteFaceDisplay::UpdateIdleLife(uint32_t now) {
+    // 1. Juegos: solo en la pantalla de la cara (si hay un menú encima no se verían)
+    if (phase_ == kPlaying && ui_.screen() == ByteUi::kHome) {
+        if (next_game_ == 0 || (int32_t)(now - next_game_) >= 0) {
+            // Al azar, pero nunca el mismo dos veces seguidas
+            ByteGame game;
+            do {
+                game = static_cast<ByteGame>(1 + lv_rand(0, kGameCount - 1));
+            } while (game == last_game_);
+            last_game_ = game;
+            renderer_.StartGame(game, now);
+            next_game_ = now + lv_rand(kGameGapMinMs, kGameGapMaxMs);
+        }
+    } else {
+        next_game_ = 0;  // al volver a jugar, el primer juego empieza de una
+        if (phase_ == kAwake) {
+            renderer_.StopGame();  // le hablaron o lo tocaron: deja de jugar ya
+        }
+        // Si le está dando sueño, el juego que iba se termina solo
+    }
+
+    // 2. Sueño: entre los 3 y los 4 min los párpados bajan poco a poco
+    float sleepy = 0;
+    if (phase_ == kSleepy) {
+        sleepy = 0.95f * (quiet_ms_ - kSleepyAfterMs) / (float)(kSleepAfterMs - kSleepyAfterMs);
+    }
+    renderer_.SetSleepy(sleepy);
+
+    // 3. Brillo: dormido baja la luz para ahorrar batería; al despertar vuelve
+    // el brillo guardado. SetBrightness(..., false) no lo guarda en la memoria.
+    bool asleep = phase_ == kAsleep;
+    if (asleep != dimmed_) {
+        dimmed_ = asleep;
+        if (auto backlight = Board::GetInstance().GetBacklight()) {
+            if (asleep) {
+                int dim = std::min<int>(backlight->brightness(), kSleepBrightness);
+                backlight->SetBrightness(dim, false);
+            } else {
+                backlight->RestoreBrightness();
+            }
+        }
     }
 }
 
