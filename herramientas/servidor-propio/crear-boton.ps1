@@ -21,6 +21,7 @@ $dir = Join-Path $HOME "byte-servidor"
 if (-not (Test-Path (Join-Path $dir "docker-compose.yml"))) { throw "Primero corre configurar.ps1." }
 Bajar "encender-byte.ps1" (Join-Path $dir "encender-byte.ps1") "Encendiendo a Byte"
 Bajar "apagar-byte.ps1" (Join-Path $dir "apagar-byte.ps1") "Apagando a Byte"
+Bajar "revisar-byte.ps1" (Join-Path $dir "revisar-byte.ps1") "Revision de Byte"
 
 # Icono de la nube (lo creo el instalador de la pantalla); si no esta, uno de Windows
 $ico = Join-Path $env:LOCALAPPDATA "Byte\byte.ico"
@@ -40,8 +41,13 @@ function Boton($nombre, $script, $icono, $descripcion) {
 }
 Boton "Byte" "encender-byte.ps1" $ico "Enciende Docker, la central, las herramientas y Byte"
 Boton "Apagar Byte" "apagar-byte.ps1" "$env:SystemRoot\System32\shell32.dll,27" "Apaga Byte, las herramientas y la central"
+Boton "Revisar Byte" "revisar-byte.ps1" "$env:SystemRoot\System32\shell32.dll,23" "Revisa internet, Docker, archivos, claves, IP y herramientas"
+# Que la ventana de "Revisar Byte" no se cierre sola al terminar
+$l = $ws.CreateShortcut((Join-Path $esc "Revisar Byte.lnk"))
+$l.Arguments = "-NoProfile -ExecutionPolicy Bypass -NoExit -File `"$(Join-Path $dir 'revisar-byte.ps1')`""
+$l.Save()
 
 Write-Host ""
-Write-Host "Listo: en tu escritorio quedaron 'Byte' (la nube) y 'Apagar Byte'." -ForegroundColor Green
+Write-Host "Listo: en tu escritorio quedaron 'Byte' (la nube), 'Revisar Byte' y 'Apagar Byte'." -ForegroundColor Green
 Write-Host "Doble clic en 'Byte' y espera a que diga 'Byte encendido'." -ForegroundColor Green
 Write-Host "Tip: clic derecho en 'Byte' > 'Anclar a la barra de tareas' para tenerlo a un clic." -ForegroundColor Cyan

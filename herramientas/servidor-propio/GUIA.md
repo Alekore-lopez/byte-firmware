@@ -48,7 +48,7 @@ Te guía para crear una app gratis en developer.spotify.com (Redirect URI `http:
 ```
 iwr -useb "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio/crear-boton.ps1?v=$(Get-Random)" | iex
 ```
-Crea en el escritorio **Byte** (la nube) y **Apagar Byte**. "Byte" abre Docker Desktop si está cerrado, prende la central y las herramientas, espera a que la central conteste y abre el programa de Byte en el PC (Byte.bat). Con la placa, basta con encenderla después del botón.
+Crea en el escritorio **Byte** (la nube), **Revisar Byte** y **Apagar Byte**. "Byte" primero revisa todo (internet, Docker, archivos, claves de Groq, Gemini y ElevenLabs sin gastar créditos, IP del PC, herramientas y puertos); si hay una falla grave no arranca y dice cómo arreglarla. Si la IP del PC cambió, la actualiza sola. Luego abre Docker Desktop si está cerrado, prende la central y las herramientas, espera a que la central conteste y abre el programa de Byte en el PC (Byte.bat). Con la placa, basta con encenderla después del botón.
 
 ## Memoria
 ```

@@ -16,6 +16,19 @@ function DockerListo { cmd /c "docker info >nul 2>&1"; return ($LASTEXITCODE -eq
 Write-Host ""
 Write-Host "  ==== Encendiendo a Byte ====" -ForegroundColor White
 
+# 0) Revision previa: si algo grave falla, no arranca y dice como arreglarlo
+$revisar = Join-Path $dir "revisar-byte.ps1"
+if (Test-Path $revisar) {
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $revisar
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "  No encendi a Byte porque hay fallas graves (en rojo). Arreglalas y vuelve a tocar el boton." -ForegroundColor Red
+    Read-Host "  Enter para cerrar"
+    exit 1
+  }
+  Start-Sleep -Seconds 2
+}
+
 # 1) Docker Desktop
 Paso "1/4 Docker (la casa de la central)"
 if (-not (DockerListo)) {
