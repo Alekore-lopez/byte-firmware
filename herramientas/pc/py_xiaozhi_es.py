@@ -384,7 +384,10 @@ def bajar(nombre: str, destino: pathlib.Path) -> bool:
         destino.write_bytes(local.read_bytes())
         return True
     try:
-        with urllib.request.urlopen(RAMA + nombre, timeout=30) as r:
+        import time
+
+        # ?v= evita que GitHub entregue una copia vieja guardada en caché
+        with urllib.request.urlopen(f"{RAMA}{nombre}?v={int(time.time())}", timeout=30) as r:
             destino.write_bytes(r.read())
         return True
     except OSError as e:
