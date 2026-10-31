@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07070b">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M18 50a12 12 0 0 1-2-24A17 17 0 0 1 49 24a13 13 0 0 1-1 26z' fill='%23111'/%3E%3Crect x='22' y='29' width='7' height='11' rx='3.5' fill='%233ee6b0'/%3E%3Crect x='35' y='29' width='7' height='11' rx='3.5' fill='%233ee6b0'/%3E%3C/svg%3E">
+<title>Byte · la nube que escucha</title>
+<meta name="description" content="Byte es un asistente de voz con forma de nube, hecho en casa en Colombia con un ESP32-S3, una pantalla táctil y una central propia.">
+<meta property="og:title" content="Byte · la nube que escucha">
+<meta property="og:description" content="Un asistente de voz con forma de nube, construido pieza por pieza en Colombia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una sola columna ancha (máx. 1120px) en "estaciones" que se recorren como el día de Byte:
+   la nube en reposo arriba, y cada sección cambia el color de sus ojos. Diseño oscuro a propósito:
+   Byte es una nube negra mate y sus ojos son la única luz. */
+:root{
+  --night:#07070b;        /* fondo: la noche donde vive la nube */
+  --ink:#101018;          /* superficies */
+  --ink-2:#181823;
+  --line:#262634;
+  --fog:#efedf6;          /* texto principal */
+  --mist:#9b9ab0;         /* texto secundario */
+  --menta:#3ee6b0;        /* acento: los ojos en reposo */
+  --lavanda:#a78bfa; --ambar:#ffb238; --blanco:#f2ede1; --coral:#fb7185; --rosa:#f472b6; --lima:#a3e635;
+  --eye:var(--menta);     /* cambia por sección */
+  --f-display:"Unbounded","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
+  --f-body:"Instrument Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--night)}
+body{background:var(--night);color:var(--fog);font-family:var(--f-body);font-size:17px;line-height:1.6;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--night)}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;line-height:1.08;margin:0;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.eyebrow{font-family:var(--f-mono);font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--eye);transition:color .6s}
+.lead{font-size:clamp(17px,2.1vw,20px);color:var(--mist);max-width:62ch}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--eye);outline-offset:3px;border-radius:6px}
+
+/* Barra superior */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:color-mix(in srgb,var(--night) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.top .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-size:19px;text-decoration:none}
+.brand i{display:inline-flex;gap:4px;padding:6px 8px;background:#000;border-radius:12px 12px 10px 10px;border:1px solid var(--line)}
+.brand i b{width:6px;height:10px;border-radius:4px;background:var(--eye);transition:background .6s}
+.top nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.top nav::-webkit-scrollbar{display:none}
+.top nav a{font-size:14px;font-weight:500;color:var(--mist);text-decoration:none;padding:6px 10px;border-radius:99px;white-space:nowrap}
+.top nav a:hover,.top nav a.on{color:var(--fog);background:var(--ink-2)}
+@media (max-width:760px){.top nav{display:none}}
+
+/* Hero */
+.hero{position:relative;padding-block:28px 40px}
+.hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:24px;align-items:center}
+.hero h1{font-size:clamp(46px,8.4vw,112px);font-weight:800;letter-spacing:-.035em}
+.hero h1 .say{display:block;font-size:max(.34em,21px);font-weight:500;letter-spacing:-.01em;color:var(--mist);margin-top:14px;line-height:1.25}
+.hero h1 .say em{font-style:normal;color:var(--eye);transition:color .6s}
+.hero .copy{display:flex;flex-direction:column;gap:22px;min-width:0}
+.stage{position:relative;aspect-ratio:1/1;max-width:100%;width:100%;border-radius:28px;background:radial-gradient(60% 55% at 50% 45%,color-mix(in srgb,var(--eye) 16%,transparent),transparent 70%);transition:background .6s}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
+.stage .hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-family:var(--f-mono);font-size:12px;color:var(--mist);white-space:nowrap}
+.fallback{position:absolute;inset:12% 8%;display:none;place-items:center}
+.no3d .fallback{display:grid}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:99px;border:1px solid var(--line);background:var(--ink);font-weight:600;font-size:15px;text-decoration:none;transition:border-color .2s,transform .2s}
+.btn:hover{border-color:var(--eye);transform:translateY(-1px)}
+.btn.main{background:var(--eye);color:#07120e;border-color:transparent;transition:background .6s,transform .2s}
+.facts{display:flex;flex-wrap:wrap;gap:8px 18px;font-family:var(--f-mono);font-size:12.5px;color:var(--mist)}
+.facts span::before{content:"● ";color:var(--eye)}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.stage{max-width:520px;margin:0 auto;order:-1}}
+
+/* Secciones */
+section.st{padding-block:clamp(64px,10vw,120px);border-top:1px solid var(--line);scroll-margin-top:60px}
+.head{display:flex;flex-direction:column;gap:14px;margin-bottom:40px}
+.head h2{font-size:clamp(30px,4.6vw,54px)}
+
+/* Propósito */
+.purpose{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.purpose article{background:var(--ink);border:1px solid var(--line);border-radius:22px;padding:24px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.purpose h3{font-size:19px}
+.purpose p{color:var(--mist);font-size:15.5px}
+.purpose .ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--ink-2)}
+.purpose svg{width:22px;height:22px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:860px){.purpose{grid-template-columns:1fr}}
+
+/* Cómo funciona */
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;counter-reset:paso}
+.flow li{list-style:none;position:relative;padding:20px 16px 0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.flow li::before{counter-increment:paso;content:"0" counter(paso);font-family:var(--f-mono);font-size:12px;color:var(--mist)}
+.flow .dot{width:54px;height:54px;border-radius:18px;display:grid;place-items:center;background:#000;border:1px solid var(--line);position:relative;z-index:1;transition:box-shadow .3s,border-color .3s}
+.flow .dot svg{width:24px;height:24px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.flow li.live .dot{border-color:currentColor;box-shadow:0 0 0 6px color-mix(in srgb,currentColor 18%,transparent)}
+.flow h3{font-size:17px;color:var(--fog)}
+.flow p{font-size:14.5px;color:var(--mist)}
+.flow .where{font-family:var(--f-mono);font-size:11.5px;color:var(--mist);border:1px solid var(--line);border-radius:99px;padding:2px 8px;align-self:flex-start}
+.flow::before{content:"";position:absolute;left:44px;right:44px;top:67px;height:2px;background:linear-gradient(90deg,var(--blanco),var(--lavanda),var(--menta),var(--ambar),var(--coral));opacity:.35}
+.flow .pulse{position:absolute;top:62px;left:40px;width:12px;height:12px;border-radius:50%;background:var(--fog);box-shadow:0 0 18px var(--fog);z-index:2;animation:viaje 6s linear infinite}
+@keyframes viaje{0%{left:40px;opacity:0}6%{opacity:1}94%{opacity:1}100%{left:calc(100% - 52px);opacity:0}}
+@media (max-width:900px){.flow{grid-template-columns:1fr;gap:6px}.flow::before{left:43px;right:auto;top:30px;bottom:30px;width:2px;height:auto;background:linear-gradient(180deg,var(--blanco),var(--lavanda),var(--menta),var(--ambar),var(--coral))}.flow .pulse{display:none}.flow li{display:grid;grid-template-columns:54px 1fr;column-gap:16px;padding:10px 0}.flow li::before{display:none}.flow li>*:not(.dot){grid-column:2}.flow .dot{grid-row:1/span 4}}
+
+/* Demo */
+.demo{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+.screen{background:#000;border-radius:26px;padding:14px;border:1px solid var(--line);box-shadow:0 30px 80px -30px color-mix(in srgb,var(--eye) 45%,transparent);transition:box-shadow .6s}
+.screen canvas{display:block;width:100%;height:auto;aspect-ratio:4/3;border-radius:14px;background:#000}
+.screen .cap{display:flex;justify-content:space-between;gap:10px;padding:10px 6px 0;font-family:var(--f-mono);font-size:12px;color:var(--mist)}
+.panel{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel h3{font-size:15px;font-family:var(--f-mono);font-weight:500;color:var(--mist);letter-spacing:.06em;text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--ink);border-radius:99px;padding:8px 14px;font-size:14.5px;font-weight:500;transition:border-color .2s,background .2s}
+.chip:hover{border-color:var(--mist)}
+.chip[aria-pressed="true"]{background:var(--ink-2);border-color:var(--c,var(--eye))}
+.chip i{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:7px;vertical-align:1px}
+.chat{background:var(--ink);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:150px}
+.chat .row{display:flex;gap:10px;font-size:15px}
+.chat .row b{font-family:var(--f-mono);font-size:12px;font-weight:500;color:var(--mist);min-width:52px;padding-top:3px}
+.chat .note{font-size:12.5px;color:var(--mist);font-family:var(--f-mono)}
+.states{display:flex;gap:6px;flex-wrap:wrap}
+.states span{font-family:var(--f-mono);font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mist);transition:all .25s}
+.states span.on{color:#000;background:var(--c);border-color:transparent}
+@media (max-width:860px){.demo{grid-template-columns:1fr}}
+
+/* Estado actual */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.col>h3{display:flex;align-items:center;gap:10px;font-size:16px;padding:0 4px 6px}
+.col>h3 em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--mist);margin-left:auto}
+.col>h3 i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.card{background:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.card b{font-weight:600;font-size:15.5px}
+.card span{font-size:14px;color:var(--mist)}
+.card small{font-family:var(--f-mono);font-size:11.5px;color:var(--c,var(--mist))}
+@media (max-width:900px){.board{grid-template-columns:1fr}}
+
+/* Caras */
+.faces{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.face{background:#000;border:1px solid var(--line);border-radius:16px;padding:10px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:border-color .2s,transform .2s}
+.face:hover,.face[aria-pressed="true"]{border-color:var(--c);transform:translateY(-2px)}
+.face canvas{width:100%;height:auto;aspect-ratio:4/3}
+.face b{font-size:14px;font-weight:600}
+.face small{font-family:var(--f-mono);font-size:11px;color:var(--mist)}
+.facekey{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--f-mono);font-size:12.5px;color:var(--mist);margin-top:16px}
+
+/* Características */
+.feats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.feat{background:var(--ink);border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.feat h3{font-size:17px}
+.feat p{font-size:14.5px;color:var(--mist)}
+.tag{align-self:flex-start;font-family:var(--f-mono);font-size:11.5px;padding:3px 9px;border-radius:99px;border:1px solid}
+.tag.ok{color:var(--menta);border-color:color-mix(in srgb,var(--menta) 45%,transparent)}
+.tag.next{color:var(--ambar);border-color:color-mix(in srgb,var(--ambar) 45%,transparent)}
+.tag.idea{color:var(--lavanda);border-color:color-mix(in srgb,var(--lavanda) 45%,transparent)}
+@media (max-width:1000px){.feats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.feats{grid-template-columns:1fr}}
+
+/* Dispositivo */
+.device{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:28px;align-items:center}
+.stage2{position:relative;aspect-ratio:5/4;max-width:100%;border-radius:26px;background:radial-gradient(70% 60% at 50% 50%,#15151f,var(--night));border:1px solid var(--line);overflow:hidden}
+.stage2 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y}
+.stage2 .ctrl{position:absolute;left:14px;right:14px;bottom:12px;display:flex;align-items:center;gap:12px;font-family:var(--f-mono);font-size:12px;color:var(--mist)}
+.stage2 input[type=range]{flex:1;accent-color:var(--menta);min-width:0}
+.parts{display:flex;flex-direction:column;gap:2px}
+.part{display:grid;grid-template-columns:14px 1fr;column-gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.part:first-child{border-top:none}
+.part i{width:12px;height:12px;border-radius:4px;background:var(--c);margin-top:6px}
+.part b{font-weight:600}
+.part span{grid-column:2;font-size:14.5px;color:var(--mist)}
+.spec{font-family:var(--f-mono);font-size:12.5px;color:var(--fog)}
+@media (max-width:900px){.device{grid-template-columns:1fr}}
+
+/* Roadmap */
+.road{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.phase{position:relative;background:var(--ink);border:1px solid var(--line);border-radius:20px;padding:20px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.phase .n{font-family:var(--f-mono);font-size:12px;color:var(--mist)}
+.phase h3{font-size:17px}
+.phase ul{margin:0;padding-left:18px;font-size:14px;color:var(--mist);display:flex;flex-direction:column;gap:4px}
+.phase .st-tag{font-family:var(--f-mono);font-size:11.5px;align-self:flex-start;padding:3px 9px;border-radius:99px;background:var(--c);color:#000;font-weight:500}
+.phase.done{border-color:color-mix(in srgb,var(--menta) 40%,var(--line))}
+.phase.now{border-color:var(--ambar);box-shadow:0 0 0 4px color-mix(in srgb,var(--ambar) 14%,transparent)}
+.bar{height:6px;border-radius:99px;background:var(--ink-2);overflow:hidden;margin-bottom:22px}
+.bar i{display:block;height:100%;width:var(--p);background:linear-gradient(90deg,var(--menta),var(--ambar))}
+@media (max-width:1000px){.road{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.road{grid-template-columns:1fr}}
+
+/* Cierre */
+.end{padding-block:clamp(70px,10vw,130px);border-top:1px solid var(--line);text-align:left}
+.end h2{font-size:clamp(32px,5.6vw,70px);max-width:16ch}
+.end .wrap{display:flex;flex-direction:column;gap:22px}
+.share{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.share code{font-family:var(--f-mono);font-size:13px;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 12px;max-width:100%;overflow-wrap:anywhere}
+footer{border-top:1px solid var(--line);padding-block:26px calc(26px + env(safe-area-inset-bottom,0px));font-size:13.5px;color:var(--mist)}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--fog);color:var(--night);padding:10px 16px;border-radius:99px;font-weight:600;font-size:14px;opacity:0;transition:all .3s;pointer-events:none;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Aparición suave: el contenido está visible desde el inicio; solo se desliza un poco */
+.rise{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}
+.rise.d1{animation-delay:.08s}.rise.d2{animation-delay:.16s}.rise.d3{animation-delay:.24s}
+@keyframes rise{from{transform:translateY(14px)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#inicio" aria-label="Byte, inicio"><i aria-hidden="true"><b></b><b></b></i>Byte</a>
+    <nav aria-label="Secciones">
+      <a href="#proposito">Propósito</a><a href="#como">Cómo funciona</a><a href="#demo">Pruébalo</a><a href="#avances">Avances</a><a href="#caras">Caras</a><a href="#dispositivo">Dispositivo</a><a href="#ruta">Ruta</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inicio">
+  <section class="hero" data-eye="#3ee6b0">
+    <div class="wrap">
+      <div class="copy">
+        <p class="eyebrow rise">Asistente de voz · hecho en casa · Colombia</p>
+        <h1 class="rise d1">Byte
+          <span class="say">Una nube negra que <em>escucha</em>, piensa y te responde con su propia voz.</span></h1>
+        <p class="lead rise d2">Byte es un asistente de voz de escritorio que estamos construyendo pieza por pieza: una pantalla con cara que muestra emociones, un cerebro de IA que conversa en español y una caja con forma de nube impresa en 3D.</p>
+        <div class="cta rise d3">
+          <a class="btn main" href="#demo">Pruébalo en vivo</a>
+          <a class="btn" href="#avances">Ver lo que ya funciona</a>
+        </div>
+        <div class="facts rise d3"><span>Se despierta al decir "Byte"</span><span>17 caras</span><span>Pantalla táctil 2,8"</span></div>
+      </div>
+      <div class="stage" id="stage1">
+        <canvas id="c3d" aria-label="Modelo 3D de Byte: una nube negra con una pantalla y dos ojos" role="img"></canvas>
+        <div class="fallback"><canvas id="flat" width="320" height="240" style="width:80%;height:auto"></canvas></div>
+        <span class="hint">Arrastra para girar · toca para cambiar su cara</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="st" id="proposito" data-eye="#f2ede1">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Propósito</p>
+        <h2>Un asistente que se siente de la casa, no de una empresa.</h2>
+        <p class="lead">Los asistentes comerciales funcionan, pero son cajas cerradas. Con Byte queremos lo contrario: un compañero de escritorio que entendemos de punta a punta, que habla como nosotros y que podemos mejorar cuando queramos.</p>
+      </div>
+      <div class="purpose">
+        <article>
+          <div class="ico" style="color:var(--menta)"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M7 18a4 4 0 0 1-.6-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></svg></div>
+          <h3>Cercano</h3>
+          <p>Habla en español de Colombia, tutea, hace chistes cortos y responde en una o dos frases, como lo haría alguien de la familia.</p>
+        </article>
+        <article>
+          <div class="ico" style="color:var(--lavanda)"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2"/></svg></div>
+          <h3>Abierto</h3>
+          <p>Está construido sobre XiaoZhi, un proyecto de código abierto. Cada pieza (oído, cerebro, voz) se puede cambiar por otra mejor.</p>
+        </article>
+        <article>
+          <div class="ico" style="color:var(--ambar)"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M4 20h16M6 20V9l6-5 6 5v11"/><path d="M10 20v-5h4v5"/></svg></div>
+          <h3>Útil en la casa</h3>
+          <p>Hoy busca en internet, pone música y recuerda lo que le cuentas. La meta es que también controle luces y equipos de la casa.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="st" id="como" data-eye="#a78bfa">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Cómo funciona</p>
+        <h2>De tu voz a su respuesta, en cinco pasos.</h2>
+        <p class="lead">El dispositivo escucha y muestra la cara. El trabajo pesado lo hace una central propia que corre en un computador de la casa y se conecta a servicios de IA.</p>
+      </div>
+      <ol class="flow" id="flow">
+        <span class="pulse" aria-hidden="true"></span>
+        <li style="color:var(--blanco)"><div class="dot"><svg viewBox="0 0 24 24" stroke="currentColor"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div><h3>Lo despiertas</h3><p>Dices "Byte" y el dispositivo lo reconoce solo, sin internet.</p><span class="where">en Byte</span></li>
+        <li style="color:var(--lavanda)"><div class="dot"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M4 12h2l2-5 3 10 3-8 2 3h4"/></svg></div><h3>Te entiende</h3><p>Tu voz se convierte en texto con un modelo de reconocimiento de voz (Whisper).</p><span class="where">oído</span></li>
+        <li style="color:var(--menta)"><div class="dot"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V5a3 3 0 0 0-3-1zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/></svg></div><h3>Piensa</h3><p>Un modelo de lenguaje (Gemini) decide qué responder con la personalidad de Byte.</p><span class="where">cerebro</span></li>
+        <li style="color:var(--ambar)"><div class="dot"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.2-4.2"/></svg></div><h3>Usa herramientas</h3><p>Si hace falta, busca en internet, mira el clima, lee noticias, pone Spotify o consulta su memoria.</p><span class="where">herramientas</span></li>
+        <li style="color:var(--coral)"><div class="dot"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M4 10v4h4l5 4V6L8 10zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></div><h3>Te responde</h3><p>La respuesta suena con una voz original diseñada para Byte, y su cara cambia según la emoción.</p><span class="where">voz y cara</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="st" id="demo" data-eye="#ffb238">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Experiencia interactiva</p>
+        <h2>Pregúntale algo y mira cómo cambia su cara.</h2>
+        <p class="lead">Esta es una simulación de la pantalla real de Byte (320 × 240 píxeles). Muestra los mismos estados que verás en el dispositivo: escuchando, pensando, buscando y hablando.</p>
+      </div>
+      <div class="demo">
+        <div class="screen">
+          <canvas id="demoScreen" width="640" height="480" aria-label="Pantalla simulada de Byte" role="img"></canvas>
+          <div class="cap"><span id="capState">En reposo</span><span>320 × 240 · ST7789</span></div>
+        </div>
+        <div class="panel">
+          <h3>Elige una pregunta</h3>
+          <div class="chips" id="asks"></div>
+          <div class="states" id="states"><span data-s="escucha" style="--c:var(--blanco)">Escuchando</span><span data-s="pensando" style="--c:var(--lavanda)">Pensando</span><span data-s="buscando" style="--c:var(--lavanda)">Buscando</span><span data-s="hablando" style="--c:var(--ambar)">Hablando</span></div>
+          <div class="chat" id="chat" aria-live="polite">
+            <p class="note">Toca una pregunta para empezar la demostración.</p>
+          </div>
+          <p class="note" style="font-size:13px;color:var(--mist)">Las respuestas de esta página son de ejemplo. En el dispositivo, Byte busca los datos reales en el momento.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st" id="avances" data-eye="#4ade80">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Desarrollo actual · octubre 2026</p>
+        <h2>Lo que ya funciona, lo que estamos haciendo y lo que sigue.</h2>
+        <p class="lead">El cerebro de Byte ya conversa en el computador mientras llega la placa. Todo lo de la primera columna está probado de verdad.</p>
+      </div>
+      <div class="board">
+        <div class="col" style="--c:var(--menta)">
+          <h3><i></i>Ya funciona <em>9</em></h3>
+          <div class="card"><b>Central propia de IA</b><span>Oído, cerebro y voz propios corriendo en un computador de la casa.</span></div>
+          <div class="card"><b>Voz original de Byte</b><span>Una voz diseñada desde cero para él, elegante y tranquila.</span></div>
+          <div class="card"><b>Búsqueda en internet</b><span>Clima, noticias y cualquier dato actual, consultados antes de responder.</span></div>
+          <div class="card"><b>Música con Spotify</b><span>Pone, pausa y cambia canciones por voz en el equipo donde esté Spotify.</span></div>
+          <div class="card"><b>Memoria</b><span>Recuerda nombres, gustos y pendientes entre conversaciones.</span></div>
+          <div class="card"><b>Encendido de un clic</b><span>Un botón revisa todo, prende la central y abre a Byte.</span></div>
+          <div class="card"><b>Firmware compilado</b><span>Placa "byte" con palabra de activación propia, caras y pantallas táctiles.</span></div>
+          <div class="card"><b>Pantalla en vivo en el PC</b><span>La cara de Byte reacciona a la conversación, igual que en la placa.</span></div>
+          <div class="card"><b>Diseño de la caja Nube</b><span>Concepto 3D completo con tapa trasera, soportes y batería.</span></div>
+        </div>
+        <div class="col" style="--c:var(--ambar)">
+          <h3><i></i>En camino <em>4</em></h3>
+          <div class="card"><b>La placa real</b><span>Freenove ESP32-S3 de 2,8" con pantalla táctil, micrófono, parlante y batería.</span><small>llega el 8 de noviembre</small></div>
+          <div class="card"><b>Primer flasheo</b><span>Cargar el firmware de Byte y conectarlo a la central.</span><small>8 de noviembre</small></div>
+          <div class="card"><b>Caras con color propio</b><span>Cada emoción con su color y nuevos diseños de ojos.</span><small>en diseño</small></div>
+          <div class="card"><b>App de celular</b><span>Prototipo listo con cuatro pestañas; falta conectarla a Byte.</span><small>prototipo</small></div>
+        </div>
+        <div class="col" style="--c:var(--lavanda)">
+          <h3><i></i>Lo que sigue <em>5</em></h3>
+          <div class="card"><b>Caja impresa en 3D</b><span>Medir la placa real y exportar las piezas para imprimir.</span></div>
+          <div class="card"><b>Alarmas y recordatorios</b><span>Que Byte avise a la hora pedida, aun sin internet.</span></div>
+          <div class="card"><b>Calendario</b><span>Consultar y agendar eventos por voz.</span></div>
+          <div class="card"><b>Servidor 24/7</b><span>Pasar la central a un mini PC siempre encendido.</span></div>
+          <div class="card"><b>Casa conectada</b><span>Luces, enchufes y TV a través de Home Assistant.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st" id="caras" data-eye="#f472b6">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">La cara de Byte</p>
+        <h2>17 caras, y cada una con su propio color.</h2>
+        <p class="lead">Las caras de estado cambian según lo que Byte esté haciendo. Las de emoción salen solas: el cerebro elige una emoción con cada respuesta y la pantalla la dibuja. Toca una para verla en grande arriba.</p>
+      </div>
+      <div class="faces" id="faces"></div>
+      <div class="facekey"><span>● Estado: según lo que hace</span><span>● Emoción: según lo que dice</span></div>
+    </div>
+  </section>
+
+  <section class="st" id="caracteristicas" data-eye="#a3e635">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Características</p>
+        <h2>Qué puede hacer Byte.</h2>
+        <p class="lead">Marcamos cada función con su estado real, para que se vea qué está listo y qué todavía es plan.</p>
+      </div>
+      <div class="feats">
+        <div class="feat"><span class="tag ok">funciona</span><h3>Conversar</h3><p>Responde preguntas, cuenta datos curiosos y acompaña, con humor y frases cortas.</p></div>
+        <div class="feat"><span class="tag ok">funciona</span><h3>Buscar al instante</h3><p>Clima, noticias y datos actuales. Si no encuentra algo, lo dice; no inventa.</p></div>
+        <div class="feat"><span class="tag ok">funciona</span><h3>Poner música</h3><p>Control remoto de Spotify: poner, pausar, siguiente, volumen y qué está sonando.</p></div>
+        <div class="feat"><span class="tag ok">funciona</span><h3>Recordar</h3><p>Guarda lo importante de cada charla y lo usa con naturalidad la próxima vez.</p></div>
+        <div class="feat"><span class="tag ok">funciona</span><h3>Dormirse por voz</h3><p>"Suspéndete" o "chao Byte" terminan la conversación y vuelve a esperar su nombre.</p></div>
+        <div class="feat"><span class="tag next">con la placa</span><h3>Pantalla táctil</h3><p>Menú, reloj, temporizador, caras y ajustes rápidos, tocando la pantalla.</p></div>
+        <div class="feat"><span class="tag next">con la placa</span><h3>Sin botones al frente</h3><p>Volumen por voz y en pantalla. Un interruptor escondido abajo para encender.</p></div>
+        <div class="feat"><span class="tag idea">en plan</span><h3>Controlar la casa</h3><p>Luces, enchufes y TV por voz y desde una app en el celular.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st" id="dispositivo" data-eye="#3ee6b0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Diseño del dispositivo</p>
+        <h2>Una nube negra mate de unos 10 centímetros.</h2>
+        <p class="lead">La caja se imprime en 3D. La placa entra por detrás y se cierra con una tapa de cuatro tornillos. Mueve la barra para ver cómo se arma por dentro.</p>
+      </div>
+      <div class="device">
+        <div class="stage2" id="stage2">
+          <canvas id="c3d2" aria-label="Vista 3D desarmada de la caja de Byte" role="img"></canvas>
+          <div class="ctrl"><label for="explode">Armada</label><input id="explode" type="range" min="0" max="100" value="55"><span>Desarmada</span></div>
+        </div>
+        <div class="parts">
+          <div class="part" style="--c:#2a2a33"><i></i><b>Frente de nube</b><span>Una sola pieza en PLA negro mate, con una zona plana para la pantalla.</span></div>
+          <div class="part" style="--c:#3ee6b0"><i></i><b>Pantalla táctil 2,8" IPS</b><span>320 × 240 píxeles, horizontal. Ahí viven las caras y los menús.</span></div>
+          <div class="part" style="--c:#2f6b4f"><i></i><b>Placa ESP32-S3</b><span>Micrófono y parlante integrados, Wi-Fi y 8 MB de PSRAM. <span class="spec">86 × 50 mm</span></span></div>
+          <div class="part" style="--c:#ffb238"><i></i><b>Parlante</b><span>Sobre una rejilla en la parte de abajo de la nube.</span></div>
+          <div class="part" style="--c:#a78bfa"><i></i><b>Batería LiPo</b><span>Recargable por USB-C, en una bandeja detrás de la placa.</span></div>
+          <div class="part" style="--c:#1c1c24"><i></i><b>Tapa trasera</b><span>Removible con 4 tornillos, para abrirlo y mejorarlo cuando haga falta.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="st" id="ruta" data-eye="#fb7185">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Roadmap</p>
+        <h2>De la idea a la nube sobre el escritorio.</h2>
+        <p class="lead">Cinco etapas. Las dos primeras están terminadas y la tercera empieza cuando llegue la placa.</p>
+      </div>
+      <div class="bar" aria-label="Avance general: dos de cinco etapas" style="--p:46%"><i></i></div>
+      <div class="road">
+        <div class="phase done" style="--c:var(--menta)"><span class="n">Etapa 1</span><span class="st-tag">terminada</span><h3>Idea y diseño</h3><ul><li>Personalidad de Byte</li><li>17 caras</li><li>Caja Nube en 3D</li></ul></div>
+        <div class="phase done" style="--c:var(--menta)"><span class="n">Etapa 2</span><span class="st-tag">terminada</span><h3>Cerebro en el PC</h3><ul><li>Central propia</li><li>Voz original</li><li>Internet, música, memoria</li></ul></div>
+        <div class="phase now" style="--c:var(--ambar)"><span class="n">Etapa 3</span><span class="st-tag">noviembre</span><h3>Byte con cuerpo</h3><ul><li>Flashear la placa</li><li>Pantalla táctil real</li><li>Primeras pruebas por voz</li></ul></div>
+        <div class="phase" style="--c:var(--lavanda)"><span class="n">Etapa 4</span><span class="st-tag">después</span><h3>La caja</h3><ul><li>Medir la placa</li><li>Imprimir la Nube</li><li>Armar con batería</li></ul></div>
+        <div class="phase" style="--c:var(--coral)"><span class="n">Etapa 5</span><span class="st-tag">meta</span><h3>Casa conectada</h3><ul><li>Servidor 24/7</li><li>Home Assistant</li><li>App en el celular</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="end" data-eye="#3ee6b0">
+    <div class="wrap">
+      <p class="eyebrow">Hasta dónde queremos llegar</p>
+      <h2>Que decir "Byte" sea tan natural como llamar a alguien de la casa.</h2>
+      <p class="lead">Un asistente propio, con cara y voz propias, que entendemos por dentro y que crece con nosotros. Seguimos construyéndolo paso a paso.</p>
+      <div class="share">
+        <a class="btn main" href="#demo">Hablar con la demo otra vez</a>
+        <a class="btn" href="#inicio">Volver arriba</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap"><span>Byte · proyecto personal hecho en Colombia · 2026</span><span>Basado en el proyecto abierto XiaoZhi ESP32</span></div></footer>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Caras: mismas formas y colores que el firmware de Byte ---------- */
+const FACES = [
+  {id:'reposo',  n:'Reposo',     c:'#3ee6b0', k:'estado',  eye:{h:60}, anim:'breathe'},
+  {id:'escucha', n:'Escucha',    c:'#f2ede1', k:'estado',  eye:{h:70,w:50}, acc:'wave'},
+  {id:'pensando',n:'Pensando',   c:'#a78bfa', k:'estado',  eye:{h:44,dx:12,dy:-16}, acc:'dots'},
+  {id:'hablando',n:'Hablando',   c:'#ffb238', k:'estado',  eye:{h:56}, acc:'mouth'},
+  {id:'dormido', n:'Dormido',    c:'#6366f1', k:'estado',  shape:'closed', acc:'zzz'},
+  {id:'wifi',    n:'Sin Wi-Fi',  c:'#fb923c', k:'estado',  eye:{h:48,w:40,dy:-10}, acc:'wifi'},
+  {id:'mute',    n:'Mic apagado',c:'#ef4444', k:'estado',  eye:{h:30,dy:-6}, acc:'mute'},
+  {id:'exito',   n:'Éxito',      c:'#4ade80', k:'estado',  shape:'arc'},
+  {id:'feliz',   n:'Feliz',      c:'#facc15', k:'emoción', eye:{h:56}, lidBot:.42},
+  {id:'risa',    n:'Risa',       c:'#a3e635', k:'emoción', shape:'arc', acc:'mouthOpen'},
+  {id:'carino',  n:'Cariño',     c:'#f472b6', k:'emoción', shape:'heart'},
+  {id:'cool',    n:'Cool',       c:'#c0c7d4', k:'emoción', eye:{h:40,dy:-4}, acc:'glasses'},
+  {id:'sorpresa',n:'Sorpresa',   c:'#e879f9', k:'emoción', eye:{h:56,w:56,r:28}, acc:'o'},
+  {id:'enfado',  n:'Enfado',     c:'#e11d48', k:'emoción', eye:{h:62}, lidTop:24},
+  {id:'tristeza',n:'Tristeza',   c:'#8e95b8', k:'emoción', eye:{h:56,dy:8}, lidTop:-20},
+  {id:'oops',    n:'Oops',       c:'#fdba74', k:'emoción', eye:{h:62,dx:-4}, eyeR:{h:38,w:42,dx:-4,dy:8}},
+  {id:'guino',   n:'Guiño',      c:'#fb7185', k:'emoción', eye:{h:62}, shapeR:'arc'},
+];
+const byId = Object.fromEntries(FACES.map(f => [f.id, f]));
+
+function rr(ctx, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+/* Dibuja una cara en un lienzo de 320x240 (escala s) en el tiempo t (segundos) */
+function drawFace(ctx, face, t, opts = {}) {
+  const s = opts.scale || 1, W = 320 * s, H = 240 * s;
+  ctx.save(); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.scale(s, s);
+  const c = face.c, cy = opts.cy || 100, gap = 70;
+  ctx.fillStyle = c; ctx.strokeStyle = c; ctx.lineCap = 'round';
+  const blink = face.anim !== 'none' && !opts.still && (t % 4.2) > 4.05 ? .12 : 1;
+  const breathe = face.anim === 'breathe' && !opts.still ? Math.sin(t * 1.6) * 3 : 0;
+  const talk = face.acc === 'mouth' && !opts.still ? Math.abs(Math.sin(t * 9)) : 0;
+  [-1, 1].forEach(side => {
+    const e = Object.assign({w: 46, h: 60, r: 18, dx: 0, dy: 0}, face.eye || {}, side === 1 && face.eyeR ? face.eyeR : {});
+    const shape = side === 1 && face.shapeR ? face.shapeR : (face.shape || 'rect');
+    const x = 160 + side * gap + e.dx, y = cy + e.dy + breathe;
+    if (shape === 'closed') { ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(x - 22, y + 6); ctx.quadraticCurveTo(x, y + 18, x + 22, y + 6); ctx.stroke(); return; }
+    if (shape === 'arc') { ctx.lineWidth = 11; ctx.beginPath(); ctx.moveTo(x - 24, y + 10); ctx.quadraticCurveTo(x, y - 26, x + 24, y + 10); ctx.stroke(); return; }
+    if (shape === 'heart') { const k = 1 + (opts.still ? 0 : Math.sin(t * 5) * .06); ctx.save(); ctx.translate(x, y); ctx.scale(k, k); ctx.beginPath(); ctx.moveTo(0, 26); ctx.bezierCurveTo(-38, 2, -30, -30, -10, -28); ctx.bezierCurveTo(-3, -27, 0, -20, 0, -15); ctx.bezierCurveTo(0, -20, 3, -27, 10, -28); ctx.bezierCurveTo(30, -30, 38, 2, 0, 26); ctx.fill(); ctx.restore(); return; }
+    const h = Math.max(6, e.h * blink + talk * 8);
+    rr(ctx, x - e.w / 2, y - h / 2, e.w, h, e.r); ctx.fill();
+    // párpados: tapan parte del ojo con negro
+    ctx.save(); ctx.fillStyle = '#000';
+    if (face.lidTop) { const a = face.lidTop * side * -1; ctx.beginPath(); ctx.moveTo(x - 34, y - h / 2 - 8); ctx.lineTo(x + 34, y - h / 2 - 8); ctx.lineTo(x + 34, y - h / 2 + 14 + (a > 0 ? 0 : -a * .9)); ctx.lineTo(x - 34, y - h / 2 + 14 + (a > 0 ? a * .9 : 0)); ctx.closePath(); ctx.fill(); }
+    if (face.lidBot) { ctx.beginPath(); ctx.ellipse(x, y + h / 2 + 10, e.w * .75, h * face.lidBot + 6, 0, Math.PI, 0, true); ctx.fill(); }
+    ctx.restore();
+  });
+  // accesorios
+  ctx.lineWidth = 5;
+  const a = face.acc;
+  if (a === 'mouth') { const m = 6 + talk * 14; rr(ctx, 160 - 16, 168, 32, m, 8); ctx.fill(); }
+  if (a === 'mouthOpen') { ctx.beginPath(); ctx.moveTo(140, 160); ctx.quadraticCurveTo(160, 196, 180, 160); ctx.closePath(); ctx.fill(); }
+  if (a === 'o') { ctx.beginPath(); ctx.arc(160, 178, 10, 0, 7); ctx.stroke(); }
+  if (a === 'dots') { for (let i = 0; i < 3; i++) { ctx.globalAlpha = opts.still ? .9 : .3 + .7 * Math.max(0, Math.sin(t * 4 - i * .7)); ctx.beginPath(); ctx.arc(232 + i * 16, 52, 5, 0, 7); ctx.fill(); } ctx.globalAlpha = 1; }
+  if (a === 'wave') { ctx.lineWidth = 4; for (let i = 0; i < 7; i++) { const hh = 6 + (opts.still ? 8 : Math.abs(Math.sin(t * 6 + i)) * 18); ctx.beginPath(); ctx.moveTo(130 + i * 10, 180 - hh / 2); ctx.lineTo(130 + i * 10, 180 + hh / 2); ctx.stroke(); } }
+  if (a === 'zzz') { ctx.font = '600 20px Unbounded, sans-serif'; ctx.globalAlpha = .8; ctx.fillText('z', 236, 62 - (opts.still ? 0 : (t * 8) % 10)); ctx.font = '600 14px Unbounded, sans-serif'; ctx.fillText('z', 256, 44 - (opts.still ? 0 : (t * 8) % 10)); ctx.globalAlpha = 1; }
+  if (a === 'wifi') { ctx.lineWidth = 4; [10, 20, 30].forEach(r => { ctx.beginPath(); ctx.arc(160, 196, r, Math.PI * 1.25, Math.PI * 1.75); ctx.stroke(); }); ctx.beginPath(); ctx.moveTo(140, 160); ctx.lineTo(180, 200); ctx.stroke(); }
+  if (a === 'mute') { ctx.lineWidth = 4; rr(ctx, 152, 160, 16, 26, 8); ctx.stroke(); ctx.beginPath(); ctx.moveTo(140, 158); ctx.lineTo(180, 196); ctx.stroke(); }
+  if (a === 'glasses') { ctx.fillStyle = '#000'; ctx.strokeStyle = c; ctx.lineWidth = 4; [-1, 1].forEach(sd => { rr(ctx, 160 + sd * 70 - 34, 70, 68, 34, 10); ctx.fill(); ctx.stroke(); }); ctx.beginPath(); ctx.moveTo(126, 84); ctx.lineTo(194, 84); ctx.stroke(); }
+  // subtítulo
+  if (opts.text) { ctx.fillStyle = opts.textColor || '#e6eaee'; ctx.font = '500 13px "Instrument Sans", sans-serif'; ctx.textAlign = 'center'; wrapText(ctx, opts.text, 160, 214, 290, 16); }
+  if (opts.status) { ctx.fillStyle = '#8a939b'; ctx.font = '500 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText(opts.status, 160, 18); }
+  ctx.restore();
+}
+function wrapText(ctx, txt, x, y, max, lh) {
+  const words = txt.split(' '); let line = '', lines = [];
+  words.forEach(w => { const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > max && line) { lines.push(line); line = w; } else line = test; });
+  lines.push(line); lines = lines.slice(-2);
+  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lh - (lines.length - 1) * lh / 2));
+}
+
+/* ---------- Color de los ojos según la sección visible ---------- */
+let pageEye = '#3ee6b0';
+const setEye = c => { pageEye = c; document.documentElement.style.setProperty('--eye', c); };
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) setEye(e.target.dataset.eye); }), {rootMargin: '-45% 0px -50% 0px'});
+$$('[data-eye]').forEach(s => io.observe(s));
+const navIo = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) $$('.top nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); }), {rootMargin: '-45% 0px -50% 0px'});
+$$('section.st[id]').forEach(s => navIo.observe(s));
+
+/* ---------- Héroe 3D: la nube ---------- */
+let heroFace = byId.reposo, heroFaceUntil = 0;
+const faceCanvas = document.createElement('canvas'); faceCanvas.width = 640; faceCanvas.height = 480;
+const fctx = faceCanvas.getContext('2d');
+const eyeFaceFor = () => FACES.find(f => f.c === pageEye) || byId.reposo;
+
+function cloudGroup(THREE, mat) {
+  const g = new THREE.Group();
+  const blobs = [[0, .25, 0, 1.05], [-1.0, -.12, 0, .78], [1.0, -.08, 0, .82], [-.5, .65, -.05, .7], [.55, .62, -.05, .72], [-1.55, -.4, 0, .5], [1.6, -.38, 0, .52], [0, -.42, 0, .92], [-.55, -.5, 0, .7], [.6, -.5, 0, .7]];
+  blobs.forEach(([x, y, z, r]) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), mat); m.position.set(x, y, z); m.scale.z = .78; g.add(m); });
+  return g;
+}
+
+function roundedPanel(THREE, w, h, r, d) {
+  const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y);
+  return new THREE.ExtrudeGeometry(s, {depth: d, bevelEnabled: true, bevelThickness: .02, bevelSize: .02, bevelSegments: 3, curveSegments: 10});
+}
+function makeRenderer(THREE, canvas) {
+  const r = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true});
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.outputEncoding = THREE.sRGBEncoding;
+  return r;
+}
+function fit(r, cam, canvas) {
+  const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
+  if (canvas.width !== Math.floor(w * r.getPixelRatio())) { r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+}
+function lights(THREE, scene) {
+  scene.add(new THREE.HemisphereLight(0x9fa8ff, 0x0a0a10, .55));
+  const k = new THREE.DirectionalLight(0xffffff, 1.1); k.position.set(3, 4, 5); scene.add(k);
+  const rim = new THREE.DirectionalLight(0x8b7bff, .9); rim.position.set(-4, 2, -4); scene.add(rim);
+  const rim2 = new THREE.DirectionalLight(0x3ee6b0, .5); rim2.position.set(4, -1, -3); scene.add(rim2);
+}
+function drag(canvas, state) {
+  let down = false, lx = 0, ly = 0, moved = 0;
+  canvas.addEventListener('pointerdown', e => { down = true; moved = 0; lx = e.clientX; ly = e.clientY; });
+  addEventListener('pointerup', () => { down = false; });
+  canvas.addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - lx, dy = e.clientY - ly; moved += Math.abs(dx) + Math.abs(dy); state.ry += dx * .008; state.rx = Math.max(-.6, Math.min(.6, state.rx + dy * .006)); lx = e.clientX; ly = e.clientY; state.idle = 0; });
+  return () => moved;
+}
+
+function startHero(THREE) {
+  const canvas = $('#c3d'), r = makeRenderer(THREE, canvas);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, 1, .1, 50); cam.position.set(0, .2, 8.2);
+  lights(THREE, scene);
+  const mat = new THREE.MeshStandardMaterial({color: 0x0d0d11, roughness: .58, metalness: .1});
+  const byte = new THREE.Group(); scene.add(byte);
+  byte.add(cloudGroup(THREE, mat));
+  const tex = new THREE.CanvasTexture(faceCanvas); tex.encoding = THREE.sRGBEncoding;
+  const bezel = new THREE.Mesh(roundedPanel(THREE, 1.72, 1.32, .2, .14), new THREE.MeshStandardMaterial({color: 0x030304, roughness: .45, metalness: 0}));
+  bezel.position.set(0, .02, .74); byte.add(bezel);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.56, 1.17), new THREE.MeshBasicMaterial({map: tex, toneMapped: false}));
+  scr.position.set(0, .02, .925); byte.add(scr);
+  const glow = new THREE.PointLight(0x3ee6b0, .8, 4); glow.position.set(0, .1, 1.6); scene.add(glow);
+  // estrellas tenues
+  const sg = new THREE.BufferGeometry(), pts = [];
+  for (let i = 0; i < 260; i++) pts.push((Math.random() - .5) * 18, (Math.random() - .5) * 12, -4 - Math.random() * 8);
+  sg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({color: 0x8888aa, size: .03})));
+  const st = {rx: -.05, ry: -.35, idle: 0};
+  const movedFn = drag(canvas, st);
+  let i = 0;
+  canvas.addEventListener('click', () => { if (movedFn() > 8) return; i = (FACES.indexOf(heroFace) + 1) % FACES.length; heroFace = FACES[i]; heroFaceUntil = performance.now() + 5000; });
+  const tick = now => {
+    const t = now / 1000; fit(r, cam, canvas);
+    if (now > heroFaceUntil) heroFace = eyeFaceFor();
+    drawFace(fctx, heroFace, t, {scale: 2, still: reduce}); tex.needsUpdate = true;
+    glow.color.set(heroFace.c);
+    st.idle += 1;
+    if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .35) * .45 - .1 - st.ry) * .02;
+    byte.rotation.set(st.rx, st.ry, 0); byte.position.y = reduce ? 0 : Math.sin(t * 1.1) * .08;
+    r.render(scene, cam); requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/* ---------- Vista desarmada ---------- */
+function startDevice(THREE) {
+  const canvas = $('#c3d2'), r = makeRenderer(THREE, canvas);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .1, 60); cam.position.set(0, 1.4, 10.5); cam.lookAt(0, 0, 0);
+  lights(THREE, scene);
+  const root = new THREE.Group(); scene.add(root);
+  const shellMat = new THREE.MeshStandardMaterial({color: 0x2a2a34, roughness: .6, metalness: .05, transparent: true, opacity: .42, depthWrite: false});
+  const front = new THREE.Group(); front.add(cloudGroup(THREE, shellMat)); front.scale.set(1, 1, .55); root.add(front);
+  const tex2 = new THREE.CanvasTexture(faceCanvas); tex2.encoding = THREE.sRGBEncoding;
+  const screen = new THREE.Group();
+  const lcd = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.3, .08), new THREE.MeshStandardMaterial({color: 0x050507, roughness: .25}));
+  const lit = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.2), new THREE.MeshBasicMaterial({map: tex2, toneMapped: false})); lit.position.z = .045;
+  screen.add(lcd, lit); root.add(screen);
+  const pcb = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.25, .05), new THREE.MeshStandardMaterial({color: 0x1f5a43, roughness: .5, metalness: .2})); root.add(pcb);
+  const chip = new THREE.Mesh(new THREE.BoxGeometry(.45, .35, .08), new THREE.MeshStandardMaterial({color: 0x9aa3ad, metalness: .7, roughness: .3})); chip.position.set(.4, .1, -.06); pcb.add(chip);
+  const usb = new THREE.Mesh(new THREE.BoxGeometry(.12, .3, .1), new THREE.MeshStandardMaterial({color: 0xbfc5cc, metalness: .8, roughness: .25})); usb.position.set(-1.06, 0, -.05); pcb.add(usb);
+  const bat = new THREE.Mesh(new THREE.BoxGeometry(1.5, .9, .2), new THREE.MeshStandardMaterial({color: 0xa78bfa, roughness: .45})); root.add(bat);
+  const spk = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .14, 40), new THREE.MeshStandardMaterial({color: 0xffb238, roughness: .4, metalness: .2})); spk.rotation.x = Math.PI / 2; root.add(spk);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.9, .12), new THREE.MeshStandardMaterial({color: 0x1a1a21, roughness: .7})); root.add(back);
+  const screws = [];
+  [[-1.35, .7], [1.35, .7], [-1.35, -.7], [1.35, -.7]].forEach(([x, y]) => { const s = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .5, 12), new THREE.MeshStandardMaterial({color: 0xcfd4da, metalness: .9, roughness: .2})); s.rotation.x = Math.PI / 2; s.position.set(x, y, 0); root.add(s); screws.push(s); });
+  const st = {rx: .15, ry: -.9, idle: 0}; drag(canvas, st);
+  const slider = $('#explode');
+  let ex = +slider.value / 100;
+  const tick = now => {
+    const t = now / 1000; fit(r, cam, canvas);
+    ex += (+slider.value / 100 - ex) * .12;
+    const k = ex * 1.4;
+    front.position.z = .2 + k * 1.2; screen.position.z = .55 + k * .55;
+    pcb.position.z = .38 - k * 0; bat.position.z = .18 - k * .7; spk.position.set(0, -.75 - k * .5, .2 - k * .2);
+    back.position.z = -.25 - k * 1.5; screws.forEach(s => s.position.z = -.5 - k * 2.3);
+    st.idle++; if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .3) * .35 - .9 - st.ry) * .02;
+    root.rotation.set(st.rx, st.ry, 0);
+    r.render(scene, cam); requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/* Si no hay WebGL, se muestra la cara plana */
+function noWebGL() {
+  $('#stage1').classList.add('no3d'); $('#c3d').hidden = true;
+  const fc = $('#flat'), x = fc.getContext('2d');
+  const loop = now => { drawFace(x, FACES.find(f => f.c === pageEye) || byId.reposo, now / 1000, {still: reduce}); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+  $('#stage2').innerHTML = '<p style="padding:24px;color:var(--mist)">Tu navegador no puede mostrar el modelo 3D. La lista de piezas de la derecha describe cada parte.</p>';
+}
+try {
+  const ok = !!(window.THREE && document.createElement('canvas').getContext('webgl'));
+  if (ok) { startHero(THREE); startDevice(THREE); } else noWebGL();
+} catch (e) { noWebGL(); }
+
+/* ---------- Galería de caras ---------- */
+const facesEl = $('#faces');
+FACES.forEach(f => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'face'; b.style.setProperty('--c', f.c); b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = `<canvas width="320" height="240" aria-hidden="true"></canvas><b>${f.n}</b><small>${f.k}</small>`;
+  facesEl.append(b);
+  f.mini = b.querySelector('canvas').getContext('2d');
+  b.onclick = () => { $$('.face').forEach(x => x.setAttribute('aria-pressed', x === b)); heroFace = f; heroFaceUntil = performance.now() + 8000; demoFace = f; demoFaceUntil = performance.now() + 4000; toast(`Cara "${f.n}" en la nube de arriba`); };
+});
+let lastMini = 0;
+function drawMinis(now) { if (now - lastMini > 80) { lastMini = now; FACES.forEach(f => drawFace(f.mini, f, now / 1000, {still: reduce})); } }
+
+/* ---------- Demostración de conversación ---------- */
+const ASKS = [
+  {q: '¿Qué clima hace hoy en Bogotá?', tool: 'Mirando el clima…', a: 'Aquí Byte te diría la temperatura y si va a llover, con el dato real que consulta en ese momento.', emo: 'feliz'},
+  {q: 'Pon música de Karol G', tool: 'Poniendo música…', a: 'De una, ya te la pongo en Spotify.', emo: 'cool'},
+  {q: 'Cuéntame un chiste', tool: null, a: '¿Sabes por qué las nubes nunca pelean? Porque siempre se lo toman con calma, como yo.', emo: 'risa'},
+  {q: '¿Te acuerdas de mi cumpleaños?', tool: null, a: 'Si me lo contaste antes, lo tengo en mi memoria y te lo digo. Si no, me lo dices y lo guardo.', emo: 'carino'},
+  {q: 'Chao Byte', tool: null, a: 'Listo, me voy a descansar un rato. Me llamas cuando quieras.', emo: 'dormido'},
+];
+const dctx = $('#demoScreen').getContext('2d');
+let demo = {state: 'reposo', text: '', status: '', run: 0}, demoFace = byId.reposo, demoFaceUntil = 0;
+const asksEl = $('#asks');
+ASKS.forEach((a, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = a.q; b.setAttribute('aria-pressed', 'false'); b.onclick = () => runDemo(i, b); asksEl.append(b); });
+const wait = ms => new Promise(r => setTimeout(r, reduce ? Math.min(ms, 300) : ms));
+const STATE_FACE = {escucha: 'escucha', pensando: 'pensando', buscando: 'pensando', hablando: 'hablando'};
+const STATE_TXT = {reposo: 'En reposo', escucha: 'Escuchando…', pensando: 'Pensando…', buscando: 'Buscando…', hablando: 'Hablando'};
+function setState(s, status) {
+  demo.state = s; demo.status = status || STATE_TXT[s] || '';
+  $$('#states span').forEach(x => x.classList.toggle('on', x.dataset.s === s));
+  $('#capState').textContent = demo.status || STATE_TXT[s];
+}
+async function runDemo(i, btn) {
+  const my = ++demo.run, a = ASKS[i];
+  $$('#asks .chip').forEach(x => x.setAttribute('aria-pressed', x === btn));
+  const chat = $('#chat'); chat.innerHTML = '';
+  const row = (who, txt) => { const d = document.createElement('div'); d.className = 'row'; d.innerHTML = `<b>${who}</b><span></span>`; d.lastChild.textContent = txt; chat.append(d); return d.lastChild; };
+  demo.text = ''; demo.emo = null;
+  setState('escucha'); await wait(500);
+  const you = row('Tú', ''); for (const ch of a.q) { if (my !== demo.run) return; you.textContent += ch; demo.text = you.textContent; await wait(28); }
+  await wait(450); if (my !== demo.run) return;
+  setState('pensando'); await wait(1100); if (my !== demo.run) return;
+  if (a.tool) { setState('buscando', a.tool); row('Byte', '').textContent = '(usando una herramienta)'; chat.lastChild.style.color = 'var(--mist)'; await wait(1500); if (my !== demo.run) return; }
+  setState('hablando'); demo.emo = byId[a.emo];
+  const said = row('Byte', ''); demo.text = '';
+  for (const w of a.a.split(' ')) { if (my !== demo.run) return; said.textContent += (said.textContent ? ' ' : '') + w; demo.text = said.textContent; await wait(170); }
+  await wait(1600); if (my !== demo.run) return;
+  if (a.emo === 'dormido') { setState('reposo', 'Dormido'); demo.state = 'dormido'; } else setState('reposo');
+  demo.text = '';
+}
+function drawDemo(now) {
+  const t = now / 1000; let f;
+  if (now < demoFaceUntil) f = demoFace;
+  else if (demo.state === 'hablando') f = (demo.emo && (t % 2.4) > 1.4 && demo.emo.id !== 'dormido') ? demo.emo : byId.hablando;
+  else if (demo.state === 'dormido') f = byId.dormido;
+  else f = byId[STATE_FACE[demo.state]] || byId.reposo;
+  const showUser = demo.state === 'escucha' || demo.state === 'pensando' || demo.state === 'buscando';
+  drawFace(dctx, f, t, {scale: 2, still: reduce, text: demo.text, textColor: showUser ? '#8a939b' : '#e6eaee', status: demo.state === 'reposo' || demo.state === 'dormido' ? '' : demo.status});
+}
+
+/* ---------- Animación común ---------- */
+const flowItems = $$('#flow li'); let flowI = 0, flowT = 0;
+function loop(now) {
+  drawMinis(now); drawDemo(now);
+  if (!reduce && now - flowT > 1200) { flowT = now; flowItems.forEach((li, i) => li.classList.toggle('live', i === flowI)); flowI = (flowI + 1) % flowItems.length; }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- Avisos ---------- */
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200); }
+
+})();
+</script>
+
+</body>
+</html>
