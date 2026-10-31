@@ -1,0 +1,142 @@
+# Bot de Byte: fusiona solo los pull requests cuando el CI sale verde.
+#
+# Cómo funciona, en sencillo:
+#   1. Claude abre un PR desde una rama "claude/...".
+#   2. GitHub compila Byte con el workflow "Compilar Byte" (byte.yml).
+#   3. Cuando esa compilación termina, este bot se despierta:
+#        - si salió VERDE ✅ y el PR cumple las reglas de abajo, lo fusiona a main;
+#        - si salió ROJA ❌, no hace nada (Claude arregla el error y vuelve a probar).
+#   4. Después de fusionar, le pide a GitHub que compile main otra vez para
+#      que el .bin final quede en Actions → Artifacts.
+#
+# Reglas de seguridad (el bot NO fusiona si alguna falla):
+#   - El PR viene de una rama de ESTE repositorio (no de un fork ajeno).
+#   - La rama empieza por "claude/".
+#   - El PR no es borrador (draft).
+#   - El PR no tiene la etiqueta "no-fusionar" (tu freno de mano).
+#   - El commit que compiló es el mismo que tiene el PR ahora mismo.
+#
+# Además, cada vez que main cambia, el bot revisa los PR abiertos de Claude:
+# si alguno quedó con conflicto, le pone la etiqueta "conflicto" y deja un
+# comentario con qué pedirle a Claude.
+name: Bot de fusión automática
+
+on:
+  workflow_run:
+    workflows: ["Compilar Byte"]
+    types: [completed]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write       # para fusionar
+  pull-requests: write  # para leer PRs, comentar y poner etiquetas
+  issues: write         # las etiquetas viven en la parte de "issues"
+  actions: write        # para volver a compilar main después de fusionar
+
+# Un solo bot a la vez, para que dos fusiones no se pisen.
+concurrency:
+  group: bot-fusion
+  cancel-in-progress: false
+
+jobs:
+  fusionar:
+    name: Fusionar PR con CI verde
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Buscar el PR y revisar las reglas
+        id: revisar
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$HEAD_BRANCH" in
+            claude/*) ;;
+            *) echo "Rama '$HEAD_BRANCH' no es de Claude: no la toco."; exit 0 ;;
+          esac
+
+          PR=$(gh pr list --state open --head "$HEAD_BRANCH" --base main --json number --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            echo "No hay PR abierto para '$HEAD_BRANCH'."; exit 0
+          fi
+
+          INFO=$(gh pr view "$PR" --json isDraft,headRefOid,labels,mergeable)
+          if [ "$(jq -r .isDraft <<<"$INFO")" = "true" ]; then
+            echo "PR #$PR es borrador: no lo fusiono."; exit 0
+          fi
+          if jq -e '.labels[] | select(.name == "no-fusionar")' <<<"$INFO" >/dev/null; then
+            echo "PR #$PR tiene la etiqueta no-fusionar: no lo fusiono."; exit 0
+          fi
+          if [ "$(jq -r .headRefOid <<<"$INFO")" != "$HEAD_SHA" ]; then
+            echo "PR #$PR tiene commits más nuevos que lo que compiló: espero al próximo CI."; exit 0
+          fi
+          # GitHub no deja que un bot fusione cambios a los propios workflows
+          # (.github/workflows/). Esos PR los fusionas tú con un clic.
+          if gh pr diff "$PR" --name-only | grep -q '^\.github/workflows/'; then
+            echo "PR #$PR cambia workflows: GitHub exige que lo fusione una persona."
+            echo "## ✋ PR #$PR cambia workflows: fusiónalo tú con el botón verde" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$(jq -r .mergeable <<<"$INFO")" = "CONFLICTING" ]; then
+            echo "PR #$PR tiene conflicto: lo marca el otro job."; exit 0
+          fi
+
+          echo "pr=$PR" >> "$GITHUB_OUTPUT"
+
+      - name: Fusionar a main
+        if: steps.revisar.outputs.pr != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          PR=${{ steps.revisar.outputs.pr }}
+          # --match-head-commit: si alguien subió algo en el último segundo, no fusiona.
+          gh pr merge "$PR" --merge --match-head-commit "$HEAD_SHA"
+          echo "## 🤖 PR #$PR fusionado a main" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compilar main para dejar el .bin final
+        if: steps.revisar.outputs.pr != ''
+        shell: bash
+        # Las fusiones hechas por el bot no disparan el CI de main por sí solas
+        # (regla de GitHub para evitar bucles), así que lo pedimos a mano.
+        run: gh workflow run byte.yml --ref main
+
+  vigilar-conflictos:
+    name: Avisar si un PR de Claude quedó con conflicto
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Revisar PRs abiertos
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh label create conflicto --color d73a4a \
+            --description "El PR choca con main; pídele a Claude que lo arregle" 2>/dev/null || true
+
+          # GitHub tarda unos segundos en recalcular si cada PR choca con el main nuevo.
+          sleep 20
+
+          for PR in $(gh pr list --state open --base main --json number,headRefName \
+                       --jq '.[] | select(.headRefName | startswith("claude/")) | .number'); do
+            ESTADO=$(gh pr view "$PR" --json mergeable --jq .mergeable)
+            TIENE=$(gh pr view "$PR" --json labels --jq '[.labels[].name] | index("conflicto") != null')
+            if [ "$ESTADO" = "CONFLICTING" ] && [ "$TIENE" = "false" ]; then
+              gh pr edit "$PR" --add-label conflicto
+              gh pr comment "$PR" --body "🤖 Este PR quedó con conflicto porque \`main\` cambió. Pídele a Claude en el proyecto: **\"arregla el conflicto del PR #$PR\"**. Cuando lo arregle y el CI salga verde, lo fusiono solo."
+              echo "PR #$PR: conflicto, avisado." >> "$GITHUB_STEP_SUMMARY"
+            elif [ "$ESTADO" = "MERGEABLE" ] && [ "$TIENE" = "true" ]; then
+              gh pr edit "$PR" --remove-label conflicto
+              echo "PR #$PR: conflicto resuelto." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

@@ -1,0 +1,13 @@
+# Dependabot revisa una vez al mes si hay versiones nuevas de las "actions"
+# que usan los workflows (checkout, upload-artifact...). Si hay, abre un PR.
+# Ojo: esos PR cambian .github/workflows/, así que GitHub exige que los
+# fusione una persona (botón verde) aunque el CI salga verde.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "Actions"

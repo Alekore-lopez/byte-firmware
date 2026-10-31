@@ -40,6 +40,19 @@ El `.bin` queda en la carpeta `build/`. Para cargarlo, conecta la placa por USB-
 
 Cada vez que algo llega a `main`, o se abre un pull request hacia `main`, GitHub compila Byte solo con el mismo comando de arriba (archivo [`.github/workflows/byte.yml`](workflows/byte.yml)). El resultado se ve en la pestaña **Actions** y como un check ✅ o ❌ en cada pull request. Si sale verde, el `.bin` listo para cargar se descarga desde la sección **Artifacts** de esa ejecución (se guarda 14 días).
 
+### Bot de fusión automática
+
+No hace falta fusionar a mano. El archivo [`.github/workflows/auto-merge.yml`](workflows/auto-merge.yml) es un bot que:
+
+1. Espera a que el CI ("Compilar Byte") termine en un pull request de una rama `claude/...`.
+2. Si salió ✅ verde, fusiona el PR a `main` solo y vuelve a compilar `main` para dejar el `.bin` final.
+3. Si salió ❌ rojo, no fusiona nada.
+4. Cada vez que `main` cambia, revisa los PR abiertos de Claude. Si alguno quedó con conflicto, le pone la etiqueta `conflicto` y deja un comentario con lo que hay que pedirle a Claude.
+
+Frenos de mano: un PR en **borrador** (draft) o con la etiqueta **`no-fusionar`** nunca se fusiona solo. Los PR que cambian archivos de `.github/workflows/` tampoco: GitHub exige que esos los fusione una persona con el botón verde.
+
+[Dependabot](dependabot.yml) revisa una vez al mes si hay versiones nuevas de las actions de los workflows y abre un PR si las hay.
+
 ## Primer arranque
 
 1. Al encender, Byte crea una red Wi-Fi propia. Conéctate a ella desde el celular y elige tu Wi-Fi de casa.
