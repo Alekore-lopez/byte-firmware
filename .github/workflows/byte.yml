@@ -1,0 +1,93 @@
+# CI de Byte: compila el firmware de la placa "byte" exactamente como se
+# compila en casa (es-ES + palabra de activación "byte") en cada push a main
+# y en cada pull request hacia main. Si algo no compila, el check sale rojo.
+#
+# Cómo leerlo:
+#   on:    CUÁNDO corre (eventos de GitHub).
+#   jobs:  QUÉ corre. Cada job es una máquina Linux nueva y limpia.
+#   steps: los pasos del job, en orden. Si un paso falla, el job se detiene.
+name: Compilar Byte
+
+on:
+  push:
+    branches:
+      - main
+    # Cambios solo en herramientas del PC o documentación no tocan el firmware.
+    paths-ignore:
+      - 'herramientas/**'
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'herramientas/**'
+      - 'docs/**'
+      - '**/*.md'
+  # Botón "Run workflow" en la pestaña Actions para correrlo a mano.
+  workflow_dispatch:
+
+# El CI solo necesita leer el código.
+permissions:
+  contents: read
+
+# Si subes otro commit al mismo PR, cancela la compilación vieja y usa la nueva.
+concurrency:
+  group: byte-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    name: Compilar firmware de Byte (ESP32-S3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Imagen oficial de Espressif con ESP-IDF 6.1 ya instalado: el mismo
+    # entorno que usas en VS Code, pero en la nube.
+    container:
+      image: espressif/idf:release-v6.1
+    env:
+      IDF_TARGET: esp32s3
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Pruebas rápidas de los scripts de compilación
+        run: python -m unittest discover -s scripts/tests
+
+      - name: Compilar (es-ES + palabra "byte")
+        shell: bash
+        run: |
+          source "$IDF_PATH/export.sh"
+          python scripts/build.py byte --language es-ES --custom-wake-word byte
+
+      - name: Resumen (tamaño del firmware)
+        if: success()
+        shell: bash
+        run: |
+          source "$IDF_PATH/export.sh" > /dev/null
+          BIN=build/merged-binary.bin
+          {
+            echo "## Firmware de Byte compilado ✅"
+            echo
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| Archivo | \`merged-binary.bin\` (en Artifacts, abajo) |"
+            echo "| Tamaño | $(du -h "$BIN" | cut -f1) |"
+            echo "| SHA-256 | \`$(sha256sum "$BIN" | cut -d' ' -f1)\` |"
+            echo "| Commit | \`${GITHUB_SHA::7}\` |"
+            echo
+            echo "<details><summary>Uso de memoria (idf.py size)</summary>"
+            echo
+            echo '```'
+            idf.py size 2>/dev/null | tail -n 25 || echo "(no disponible)"
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar el firmware para descargarlo
+        uses: actions/upload-artifact@v7
+        with:
+          name: byte-firmware-${{ github.sha }}
+          path: build/merged-binary.bin
+          if-no-files-found: error
+          retention-days: 14
