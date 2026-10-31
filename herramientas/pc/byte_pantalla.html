@@ -232,10 +232,26 @@ const CY = 108, BG = '#000'; let FACE_Y = 76.8;   // igual que el firmware
 function rrc(c, x, y, w, h, r) { r = Math.max(0, Math.min(r, w / 2, h / 2)); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 function heart(c, cx, cy, s) { c.beginPath(); c.moveTo(cx, cy + s * .42); c.bezierCurveTo(cx - s * .62, cy, cx - s * .55, cy - s * .5, cx - s * .25, cy - s * .42); c.bezierCurveTo(cx - s * .08, cy - s * .38, cx, cy - s * .26, cx, cy - s * .18); c.bezierCurveTo(cx, cy - s * .26, cx + s * .08, cy - s * .38, cx + s * .25, cy - s * .42); c.bezierCurveTo(cx + s * .55, cy - s * .5, cx + s * .62, cy, cx, cy + s * .42); c.closePath(); }
 function drop(c, x, y, s) { c.beginPath(); c.moveTo(x, y - s); c.bezierCurveTo(x + s * .9, y + s * .1, x + s * .6, y + s * .9, x, y + s * .9); c.bezierCurveTo(x - s * .6, y + s * .9, x - s * .9, y + s * .1, x, y - s); c.fill(); }
+// Ojo "Eclipse": la píldora oscura con un toque del color, un sol con corona que
+// late y una luna negra que lo tapa y se corre despacio (más cuando escucha).
+// Igual que DrawEclipse() del firmware.
+function eclipse(c, cx, cy, w, h, side) {
+  const col = c.fillStyle, now = performance.now(), room = Math.min(w, h) / 2 - 1, sun = Math.min(w * .27, room);
+  c.globalAlpha = .12; c.fillRect(cx - w, cy - h, w * 2, h * 2); c.globalAlpha = 1;
+  if (room < 6) return;
+  const pulse = 1 + .06 * Math.sin(now * .002);
+  [[1, .14], [.8, .28], [.6, .5], [.42, .78]].forEach(([k, o]) => { c.globalAlpha = o; c.beginPath(); c.arc(cx, cy, Math.min(room, sun + (room - sun) * k * pulse), 0, 7); c.fill(); });
+  c.globalAlpha = 1; c.beginPath(); c.arc(cx, cy, sun, 0, 7); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.3)'; c.beginPath(); c.arc(cx, cy, sun * .8, 0, 7); c.fill();
+  const listening = target && target.face && target.face.id === 'escucha';
+  const swing = listening ? .55 : .25 * Math.sin(now * .0004 + (side === 'L' ? 0 : .6));
+  c.fillStyle = BG; c.beginPath(); c.arc(cx + sun * swing * (side === 'L' ? -1 : 1), cy, sun * 1.02, 0, 7); c.fill();
+  c.fillStyle = col;
+}
 function drawEye(c, cx, cy, e, side, blink, beat) {
   if (e.shape === 'rect') {
     const h = Math.max(5, e.h * blink), w = e.w, x = cx - w / 2, y = cy - h / 2;
-    c.save(); rrc(c, x, y, w, h, e.r); c.fill(); c.clip(); c.fillStyle = BG;
+    c.save(); rrc(c, x, y, w, h, e.r); c.clip(); eclipse(c, cx, cy, w, h, side); c.fillStyle = BG;
     if (Math.abs(e.lidTop) > .5) { const t = Math.tan(e.lidTop * Math.PI / 180) * (side === 'L' ? 1 : -1), y0 = cy - e.h / 2 + e.h * .28; c.beginPath(); c.moveTo(cx - w, y0 - t * w); c.lineTo(cx + w, y0 + t * w); c.lineTo(cx + w, cy - e.h); c.lineTo(cx - w, cy - e.h); c.fill(); }
     if (e.lidBot > .01) { const ry = w * .55; c.beginPath(); c.ellipse(cx, cy + h / 2 + ry + 2 - e.lidBot * e.h, w * .8, ry, 0, 0, Math.PI * 2); c.fill(); }
     c.restore();

@@ -63,6 +63,8 @@ private:
     struct EyeOnScreen {
         EyeShape shape;
         float cx, cy, w, h, r, lid_top, lid_bot, beat, blink;
+        float moon;    // Eclipse: cuánto se corre la luna (px, con signo)
+        float corona;  // Eclipse: latido de la corona (1 = normal)
     } frame_eyes_[2] = {};
     uint16_t frame_acc_in_ = 0, frame_acc_out_ = 0;
 
@@ -76,5 +78,6 @@ private:
     float X(float x) const { return screen_cx_ + (x - 120) * scale_; }
     float Y(float y) const { return screen_cy_ + (y - 108) * scale_; }
     void DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side) const;
+    void DrawEclipse(lv_layer_t* layer, const EyeOnScreen& e, float h) const;
     void DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const;
 };
