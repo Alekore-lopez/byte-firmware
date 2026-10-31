@@ -440,7 +440,7 @@ dialog.lb .prev{left:10px}dialog.lb .next{right:10px}
       <div class="gal" id="gal">
         <button data-i="0"><img src="galeria/frente.jpg" alt="Byte de frente: nube negra mate con pantalla y ojos Eclipse, sobre dos piecitos" loading="lazy" width="1600" height="1200"><span><b>De frente</b>Pantalla de 2,8" y sus ojos Eclipse.</span></button>
         <button data-i="1"><img src="galeria/lado.jpg" alt="Byte en vista de tres cuartos, con el puerto USB-C en el costado" loading="lazy" width="1600" height="1200"><span><b>De lado</b>Volumen de nube y USB-C para cargar.</span></button>
-        <button data-i="2"><img src="galeria/atras.jpg" alt="Byte por detrás: tapa con cuatro tornillos, logo y rejilla del parlante" loading="lazy" width="1600" height="1200"><span><b>Por detrás</b>Tapa de 4 tornillos y rejilla del parlante.</span></button>
+        <button data-i="2"><img src="galeria/atras.jpg" alt="Byte por detrás: tapa con cuatro tornillos, logo y rejilla del parlante" loading="lazy" width="1600" height="1200"><span><b>Por detrás</b>Tapa de 4 tornillos y parlante abajo.</span></button>
         <button data-i="3"><img src="galeria/escritorio.jpg" alt="Byte armado sobre un escritorio de madera junto a una taza de café" loading="lazy" width="1600" height="1200"><span><b>En tu escritorio</b>Del tamaño de una taza de café.</span></button>
       </div>
       <p class="galnote">Renders del diseño que vamos a imprimir en 3D en PLA negro mate, con suelas de TPU. No son fotos: las medidas finales se ajustan cuando tengamos la placa en la mano.</p>
@@ -705,31 +705,31 @@ function startDevice(THREE) {
   lights(THREE, scene);
   const root = new THREE.Group(); scene.add(root);
   const shellMat = new THREE.MeshStandardMaterial({color: 0x0b0b0e, roughness: .7, metalness: .05});
-  const front = new THREE.Group(); front.add(cloudGroup(THREE, shellMat)); front.add(feetGroup(THREE, shellMat)); front.scale.set(1, 1, .55); root.add(front);
+  const front = new THREE.Group(); front.add(cloudGroup(THREE, shellMat)); front.add(feetGroup(THREE, shellMat)); front.scale.set(1, 1, .8); root.add(front);
   const tex2 = new THREE.CanvasTexture(faceCanvas); tex2.encoding = THREE.sRGBEncoding;
   const screen = new THREE.Group();
   const lcd = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.3, .08), new THREE.MeshStandardMaterial({color: 0x050507, roughness: .25}));
   const lit = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.2), new THREE.MeshBasicMaterial({map: tex2, toneMapped: false})); lit.position.z = .045;
   screen.add(lcd, lit); root.add(screen);
-  const pcb = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.25, .05), new THREE.MeshStandardMaterial({color: 0x1f5a43, roughness: .5, metalness: .2})); root.add(pcb);
+  const pcb = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.1, .05), new THREE.MeshStandardMaterial({color: 0x1f5a43, roughness: .5, metalness: .2})); root.add(pcb);
   const chip = new THREE.Mesh(new THREE.BoxGeometry(.45, .35, .08), new THREE.MeshStandardMaterial({color: 0x9aa3ad, metalness: .7, roughness: .3})); chip.position.set(.4, .1, -.06); pcb.add(chip);
-  const usb = new THREE.Mesh(new THREE.BoxGeometry(.12, .3, .1), new THREE.MeshStandardMaterial({color: 0xbfc5cc, metalness: .8, roughness: .25})); usb.position.set(-1.06, 0, -.05); pcb.add(usb);
+  const usb = new THREE.Mesh(new THREE.BoxGeometry(.12, .3, .1), new THREE.MeshStandardMaterial({color: 0xbfc5cc, metalness: .8, roughness: .25})); usb.position.set(-.94, 0, -.05); pcb.add(usb);
   const bat = new THREE.Mesh(new THREE.BoxGeometry(1.5, .9, .2), new THREE.MeshStandardMaterial({color: 0xa78bfa, roughness: .45})); root.add(bat);
   const spk = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .14, 40), new THREE.MeshStandardMaterial({color: 0xffb238, roughness: .4, metalness: .2})); spk.rotation.x = Math.PI / 2; root.add(spk);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.9, .12), new THREE.MeshStandardMaterial({color: 0x1a1a21, roughness: .7})); root.add(back);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.85, 1.1, .1), new THREE.MeshStandardMaterial({color: 0x1a1a21, roughness: .6})); root.add(back);
   const screws = [];
-  [[-1.35, .7], [1.35, .7], [-1.35, -.7], [1.35, -.7]].forEach(([x, y]) => { const s = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .5, 12), new THREE.MeshStandardMaterial({color: 0xcfd4da, metalness: .9, roughness: .2})); s.rotation.x = Math.PI / 2; s.position.set(x, y, 0); root.add(s); screws.push(s); });
-  const st = {rx: .12, ry: -1.05, idle: 0}; drag(canvas, st);
+  [[-.8, .3], [.8, .3], [-.8, -.55], [.8, -.55]].forEach(([x, y]) => { const s = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .5, 12), new THREE.MeshStandardMaterial({color: 0xcfd4da, metalness: .9, roughness: .2})); s.rotation.x = Math.PI / 2; s.position.set(x, y, 0); root.add(s); screws.push(s); });
+  const st = {rx: .12, ry: -.8, idle: 0}; drag(canvas, st);
   const slider = $('#explode');
   let ex = +slider.value / 100;
   const tick = now => {
     const t = now / 1000; fit(r, cam, canvas);
     ex += (+slider.value / 100 - ex) * .12;
     const k = ex * 1.4;
-    front.position.z = .2 + k * 2.4; screen.position.z = .55 + k * 1.2;
+    front.position.z = .2 + k * 2.4; screen.position.z = front.position.z + .66;
     pcb.position.z = .38 - k * 0; bat.position.z = .18 - k * .7; spk.position.set(0, -.75 - k * .5, .2 - k * .2);
-    back.position.z = -.25 - k * 2.0; screws.forEach(s => s.position.z = -.5 - k * 3.0);
-    st.idle++; if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .3) * .3 - 1.05 - st.ry) * .02;
+    back.position.set(0, -.12, -.48 - k * 2.0); screws.forEach(s => s.position.z = -.3 - k * 3.0);
+    st.idle++; if (!reduce && st.idle > 90) st.ry += (Math.sin(t * .3) * .3 - .8 - st.ry) * .02;
     root.rotation.set(st.rx, st.ry, 0);
     r.render(scene, cam); requestAnimationFrame(tick);
   };
