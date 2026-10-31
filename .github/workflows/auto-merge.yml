@@ -100,6 +100,9 @@ jobs:
           PR=${{ steps.revisar.outputs.pr }}
           # --match-head-commit: si alguien subió algo en el último segundo, no fusiona.
           gh pr merge "$PR" --merge --match-head-commit "$HEAD_SHA"
+          # La rama ya está dentro de main: la borramos para no juntar basura.
+          gh api -X DELETE "repos/$GH_REPO/git/refs/heads/$HEAD_BRANCH" \
+            || echo "No se pudo borrar la rama $HEAD_BRANCH (la limpia el otro bot)."
           echo "## 🤖 PR #$PR fusionado a main" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Compilar main para dejar el .bin final
