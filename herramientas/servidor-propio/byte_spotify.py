@@ -92,7 +92,8 @@ def registrar(mcp):
         try:
             sp = _cliente()
             tipo_api = TIPOS.get(tipo.strip().lower(), "track")
-            r = sp.search(q=busqueda, type=tipo_api, limit=1, market="from_token")
+            # Sin market="from_token": ese filtro exige otro permiso (user-read-private)
+            r = sp.search(q=busqueda, type=tipo_api, limit=1)
             items = r.get(tipo_api + "s", {}).get("items") or []
             items = [i for i in items if i]
             if not items:
