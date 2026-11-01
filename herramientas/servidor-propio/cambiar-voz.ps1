@@ -43,6 +43,10 @@ try {
     -Body ([Text.Encoding]::UTF8.GetBytes($cuerpo)) -OutFile $prueba
 } catch {
   $code = $_.Exception.Response.StatusCode.value__
+  $detalle = ""
+  try { $detalle = (New-Object IO.StreamReader($_.Exception.Response.GetResponseStream())).ReadToEnd() } catch { }
+  if ($detalle) { Write-Host "ElevenLabs dice: $detalle" -ForegroundColor DarkGray }
+  if ($code -eq 402) { throw "ElevenLabs pide plan de pago para usar esa voz por API. Pasa con las voces de la 'Voice Library' (de otras personas) en el plan gratis. Usa una voz creada por ti en Voice Design, o sube a un plan pago." }
   if ($code -eq 404 -or $code -eq 400) { throw "ElevenLabs no encontro esa voz. Revisa que este guardada en 'My Voices' (boton Save / Add to my voices) y copia de nuevo el ID." }
   if ($code -eq 401) { throw "ElevenLabs rechazo la clave del .config.yaml (o le falta permiso de Text to Speech)." }
   throw "No pude probar la voz (codigo $code): $($_.Exception.Message)"
