@@ -21,6 +21,7 @@ enum ByteGame : uint8_t {
 };
 constexpr int kGameCount = 6;
 constexpr uint32_t kGameMs = 6000;  // cada juego dura 6 s y se acaba solo
+constexpr uint32_t kBootMs = 2400;  // la animación de encendido dura 2,4 s
 
 class ByteFaceRenderer {
 public:
@@ -31,8 +32,20 @@ public:
     void SetFace(const byte_face_t* face, uint32_t now_ms);
     const byte_face_t* face() const { return target_; }
 
-    // Mientras Byte habla se añade la boca de barras a cualquier expresión
+    // Mientras Byte habla se añaden las ondas de voz y el halo a cualquier expresión
     void SetTalking(bool talking) { talking_ = talking; }
+
+    // Qué tan fuerte suena la voz ahora (0 = silencio, 1 = muy fuerte): mueve
+    // las ondas de voz y hace latir el halo. Al hablar es la voz de Byte y al
+    // escuchar la del micrófono.
+    void SetVoiceLevel(float level) { voice_in_ = level; }
+
+    // Encendido tipo JARVIS: una línea de energía, dos anillos que se cierran,
+    // los ojos que se encienden en blanco luna y un destello. Dura kBootMs.
+    void StartBoot(uint32_t now_ms);
+    bool booting() const { return booting_; }
+    // true una sola vez, justo cuando se encienden los ojos (para el pitido)
+    bool TakeBootBeep();
 
     // Modo juego: empieza un juego (dura kGameMs y se acaba solo) o lo corta ya
     void StartGame(ByteGame game, uint32_t now_ms);
@@ -56,6 +69,7 @@ private:
 
     // Pantalla
     float screen_cx_ = 160, screen_cy_ = 92, scale_ = 1.15f;
+    int width_ = 320, height_ = 240;
 
     // Transición
     const byte_face_t* target_ = nullptr;
@@ -73,6 +87,14 @@ private:
     float gaze_x_ = 0, gaze_y_ = 0, gaze_to_x_ = 0, gaze_to_y_ = 0;
     uint32_t next_gaze_ = 0;
     bool talking_ = false;
+
+    // Voz: lo que llega (voice_in_) y lo que se dibuja, suavizado (voice_)
+    float voice_in_ = 0, voice_ = 0;
+
+    // Encendido
+    bool booting_ = false, boot_beep_ = false, boot_clear_ = false;
+    uint32_t boot_start_ = 0;
+    float boot_ms_ = 0;  // cuánto lleva la animación de encendido
 
     // Modo juego y sueño
     ByteGame game_ = GAME_NONE;
@@ -121,5 +143,8 @@ private:
     void DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side) const;
     void DrawEclipse(lv_layer_t* layer, const EyeOnScreen& e, float h) const;
     void DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const;
+    void DrawHalo(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const;
+    void DrawWaves(lv_layer_t* layer, lv_opa_t opa) const;
+    void DrawBoot(lv_layer_t* layer, bool front) const;
     void DrawPlay(lv_layer_t* layer) const;
 };
