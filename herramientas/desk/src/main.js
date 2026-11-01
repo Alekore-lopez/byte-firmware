@@ -23,6 +23,7 @@ const RAIZ = path.join(__dirname, '..');
 
 let ventana = null;     // ventana grande
 let panel = null;       // panel rápido que cae desde la barra
+let cara = null;        // ventana con la cara de Byte (la misma pantalla del PC y la placa)
 let bandeja = null;
 let central = null;
 let bytePc = null;     // el programa de Byte del PC, si está abierto
@@ -79,6 +80,12 @@ function crearVentana() {
   }
 
   ventana = new BrowserWindow(opciones);
+  // Mac: Byte vive arriba en la barra de menú (junto al WiFi). El ícono del Dock
+  // solo aparece mientras la ventana grande está abierta, como las apps de la barra.
+  if (ES_MAC && app.dock) {
+    ventana.on('show', () => app.dock.show());
+    ventana.on('hide', () => { if (!cara || cara.isDestroyed() || !cara.isVisible()) app.dock.hide(); });
+  }
   ventana.loadFile(path.join(RAIZ, 'renderer', 'index.html'));
   ventana.once('ready-to-show', () => {
     // Si arrancó con el computador, empieza escondido en la barra.
@@ -112,6 +119,41 @@ function crearPanel() {
   panel.loadFile(path.join(RAIZ, 'renderer', 'panel.html'));
   panel.on('blur', () => { if (!panel.webContents.isDevToolsOpened()) panel.hide(); });
   protegerNavegacion(panel);
+}
+
+/** Dónde está la pantalla de Byte: en el repo (npm start) o dentro de la app instalada. */
+function rutaCara() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'cara', 'byte_pantalla.html')
+    : path.join(RAIZ, '..', 'pc', 'byte_pantalla.html');
+}
+
+/** Abre (o trae al frente) la ventana con la cara de Byte. */
+function mostrarCara() {
+  if (cara && !cara.isDestroyed()) {
+    if (cara.isMinimized()) cara.restore();
+    cara.show();
+    cara.focus();
+    return;
+  }
+  cara = new BrowserWindow({
+    width: 480,
+    height: 400,
+    minWidth: 320,
+    minHeight: 266,
+    title: 'Byte',
+    backgroundColor: '#000000',
+    icon: path.join(RAIZ, 'assets', 'icono.png'),
+    ...(ES_MAC ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 12 } } : { autoHideMenuBar: true }),
+    webPreferences: preferenciasSeguras,
+  });
+  cara.setAspectRatio(4 / 3);
+  cara.loadFile(rutaCara());
+  protegerNavegacion(cara);
+  cara.on('closed', () => {
+    cara = null;
+    if (ES_MAC && app.dock && ventana && !ventana.isVisible()) app.dock.hide();
+  });
 }
 
 /** La interfaz nunca navega a otras páginas; los enlaces se abren en el navegador. */
@@ -180,6 +222,7 @@ function menuBandeja() {
   return Menu.buildFromTemplate([
     { label: 'Abrir Byte Desk', click: () => mostrarVentana() },
     { label: 'Hablar con Byte', accelerator: ATAJO, click: alternarPanel },
+    { label: 'Ver la cara de Byte', click: mostrarCara },
     { type: 'separator' },
     { label: 'Reconectar con la central', click: () => central.reconectar() },
     {
@@ -227,7 +270,7 @@ function limpiarInicioViejo() {
 // ---------- Central ----------
 
 function enviarATodas(canal, datos) {
-  for (const w of [ventana, panel]) {
+  for (const w of [ventana, panel, cara]) {
     if (w && !w.isDestroyed()) w.webContents.send(canal, datos);
   }
 }
@@ -332,6 +375,7 @@ function registrarPeticiones() {
   });
 
   ipcMain.handle('ventana:abrir', (_e, seccion) => { if (panel) panel.hide(); mostrarVentana(typeof seccion === 'string' ? seccion : undefined); });
+  ipcMain.handle('ventana:cara', () => { if (panel) panel.hide(); mostrarCara(); });
   ipcMain.handle('ventana:cerrar-panel', () => panel && panel.hide());
 }
 
@@ -339,6 +383,11 @@ function registrarPeticiones() {
 
 app.whenReady().then(() => {
   ajustes = new Ajustes(app.getPath('userData'));
+  // Mac: con `npm start` el Dock mostraría el ícono de Electron; ponemos el de Byte.
+  if (ES_MAC && app.dock) {
+    app.dock.setIcon(path.join(RAIZ, 'assets', 'icono.png'));
+    if (process.argv.includes('--oculto')) app.dock.hide();
+  }
   registrarPeticiones();
   crearVentana();
   crearPanel();

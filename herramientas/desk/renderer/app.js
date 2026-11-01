@@ -112,6 +112,7 @@ function irA(id) {
   if (id === 'ajustes') pintarAjustes();
 }
 window.byte.alIrA((id) => irA(id));
+$('#ver-cara').addEventListener('click', () => window.byte.abrirCara());
 
 // ---------- Inicio ----------
 

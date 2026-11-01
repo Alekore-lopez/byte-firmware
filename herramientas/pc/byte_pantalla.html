@@ -995,7 +995,9 @@ const LIVE_URL = 'http://127.0.0.1:8765';
 const HERRAMIENTAS = { buscar_en_internet: 'Buscando…', noticias: 'Buscando noticias…', clima: 'Mirando el clima…',
   spotify_poner: 'Poniendo música…', spotify_control: 'Música…', spotify_volumen: 'Música…', spotify_que_suena: 'Mirando Spotify…',
   handle_exit_intent: 'Despidiéndome…', get_lunar: 'Mirando el calendario…' };
-const live = { on: false, enabled: location.origin === LIVE_URL };
+// En Byte Desk (Windows/Mac) la cara recibe los mensajes de la central por window.byte.
+const enDesk = Boolean(window.byte && window.byte.alMensaje);
+const live = { on: false, enabled: enDesk || location.origin === LIVE_URL };
 function liveWake() { S.sleeping = false; S.lastTouch = performance.now(); S.idleOffset = 0; applyBrightness(); }
 function onLive(m) {
   const now = performance.now();
@@ -1031,11 +1033,38 @@ function onLive(m) {
   }
 }
 function liveTap() {
+  // En Byte Desk: tocar la cara abre el chat para escribirle (o corta si está hablando)
+  if (enDesk) {
+    if (S.dev === 'speaking' || S.dev === 'thinking') window.byte.interrumpir();
+    else window.byte.abrirVentana('chat');
+    beep([784, 1046], .05); return;
+  }
   // Como en la placa: tocar la cara empieza a conversar, o corta lo que esté pasando
   fetch(LIVE_URL + '/tap', { method: 'POST' }).catch(() => {});
   beep([784, 1046], .05);
 }
+/* Byte Desk: traduce lo que llega de la central al mismo idioma que usa la pantalla del PC */
+function deskConnect() {
+  const b = window.byte;
+  const conectado = (si) => {
+    if (si && !live.on) { live.on = true; S.wifi = true; toast('Conectado'); log('En vivo: conectado a la central'); }
+    else if (!si && live.on) { live.on = false; S.wifi = false; S.reply = ''; S.user = ''; setDev('idle'); toast('Sin conexión con la central'); }
+  };
+  b.alEstado((e) => conectado(e && e.estado === 'en-linea'));
+  b.estado().then((e) => conectado(e && e.estado === 'en-linea')).catch(() => {});
+  b.alPregunta((t) => {
+    onLive({ type: 'state', state: 'listening' });
+    onLive({ type: 'stt', text: String(t || '').replace(/^🎤\s*/, '') });
+  });
+  b.alMensaje((m) => {
+    if (!m || typeof m !== 'object') return;
+    if (m.type === 'tts' && m.state === 'start') onLive({ type: 'state', state: 'speaking' });
+    else if (m.type === 'tts' && m.state === 'stop') onLive({ type: 'state', state: 'idle' });
+    else onLive(m);
+  });
+}
 function liveConnect() {
+  if (enDesk) { deskConnect(); return; }
   const es = new EventSource(LIVE_URL + '/events');
   es.onopen = () => { live.on = true; S.wifi = true; toast('Conectado'); beep([660, 990]); log('En vivo: conectado a Byte del PC'); };
   es.onerror = () => { if (live.on) { live.on = false; S.wifi = false; S.reply = ''; S.user = ''; setDev('idle'); toast('Byte del PC está cerrado'); log('En vivo: se cerró Byte del PC'); } };
