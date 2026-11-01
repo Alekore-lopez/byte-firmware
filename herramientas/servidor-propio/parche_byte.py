@@ -28,6 +28,8 @@ reinicios y actualizaciones sin romper nada.
    en blanco). Además, al resumir lee la música que sonó en Spotify.
 8. Saludo al despertar en español ("¡Hola, Byte!") en vez del "嘿，你好呀" de
    fábrica. Con eso Byte saluda y, si recuerda algo, te lo propone.
+9. Whisper a veces oye "Suspéndete" en inglés ("Suspended", "Suspended Day").
+   Se corrige a "Suspéndete." antes de que llegue a Gemini.
 """
 
 import os
@@ -291,3 +293,36 @@ parchar(
     "¡Hola, Byte!",
     lambda t: t.replace('"嘿，你好呀"', '"¡Hola, Byte!"'),
 )
+
+
+# 9) Whisper a veces oye "Suspéndete" en inglés ("Suspended", "Suspended Day")
+#    y entonces Byte no se duerme. Lo corregimos antes de que llegue al cerebro;
+#    así Byte se despide como siempre y guarda la memoria.
+CORREGIR = '''
+
+_BYTE_CORRECCIONES = {
+    "suspended": "Suspéndete.", "suspendedday": "Suspéndete.", "suspend": "Suspéndete.",
+    "suspendit": "Suspéndete.", "suspendedte": "Suspéndete.",
+}
+
+
+def _byte_corregir(texto):
+    """Cambia lo que Whisper oye mal siempre igual por lo que quisiste decir."""
+    clave = "".join(c for c in (texto or "").lower() if c.isalpha())
+    for nombre in ("byte", "byt", "bait"):
+        if clave.startswith(nombre) and len(clave) > len(nombre):
+            clave = clave[len(nombre):]
+            break
+    return _BYTE_CORRECCIONES.get(clave, texto)
+'''
+
+
+def corregir(t):
+    viejo = 'text = _byte_sin_fantasmas(response.json().get("text", ""))'
+    if viejo not in t:
+        return t
+    t = t.replace(viejo, 'text = _byte_corregir(_byte_sin_fantasmas(response.json().get("text", "")))', 1)
+    return t.rstrip() + "\n" + CORREGIR
+
+
+parchar("core/providers/asr/openai.py", "_BYTE_CORRECCIONES", corregir)

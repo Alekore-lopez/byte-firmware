@@ -5,14 +5,15 @@
 # Que cambia en $HOME\byte-servidor\data\.config.yaml (deja copia .antes-de-oido):
 #   1) Detector de voz (VAD): espera 1,2 s de silencio antes de responder (venia en 0,2 s).
 #   2) Whisper: usa el modelo completo whisper-large-v3 en vez del "turbo".
-# Y baja parche_byte.py nuevo: Whisper sin "creatividad" y sin frases fantasma.
+# Y baja parche_byte.py nuevo: Whisper sin "creatividad", sin frases fantasma
+# y corrigiendo "Suspended" (lo que a veces oye en ingles) a "Suspendete".
 # No toca tus claves.
 
 $ErrorActionPreference = "Stop"
 $esperaMs = 1200   # cambia este numero si quieres que espere mas (1500) o menos (900)
 
 $fuentes = @(
-  "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/refs/heads/claude/project-thread-e9xm0n/herramientas/servidor-propio",
+  "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/refs/heads/claude/project-thread-2d9gwt/herramientas/servidor-propio",
   "https://raw.githubusercontent.com/alekore-lopez/byte-firmware/main/herramientas/servidor-propio"
 )
 function Bajar($archivo, $destino, $debeTener) {
@@ -32,7 +33,7 @@ if (-not (Test-Path $conf)) { throw "No encontre $conf. Primero corre configurar
 
 Write-Host ""
 Write-Host "=== 1) Bajando el parche nuevo del oido ===" -ForegroundColor Cyan
-Bajar "parche_byte.py" (Join-Path $data "parche_byte.py") "_BYTE_FANTASMAS"
+Bajar "parche_byte.py" (Join-Path $data "parche_byte.py") "_BYTE_CORRECCIONES"
 Write-Host "Listo." -ForegroundColor Green
 
 Write-Host ""
