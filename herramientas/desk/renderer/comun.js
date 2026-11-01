@@ -17,7 +17,10 @@ const EMOCION_A_CARA = {
   winking: 'guino', silly: 'guino', thinking: 'pensando', sleepy: 'dormido', confident: 'exito',
 };
 
-const ESPERA_RESPUESTA_MS = 40000;
+// Si en 15 s la central ni siquiera empezó, algo anda mal con la conexión.
+// Si empezó, le damos hasta 2 minutos: buscar en internet puede tardar.
+const ESPERA_INICIO_MS = 15000;
+const ESPERA_RESPUESTA_MS = 120000;
 
 /** Pinta todas las caritas (.byte) según el estado y la emoción. */
 function pintarCaras(estado, cara) {
@@ -89,16 +92,27 @@ class Conversacion {
     this.actual = null;
     this.emojiPendiente = '';
     this._ponerEstado('pensando');
+    this.empezo = false;
+    this._vigilar(ESPERA_INICIO_MS);
+    this._guardar();
+  }
+
+  /** Si Byte no contesta a tiempo, lo decimos (sin borrar nada: si contesta tarde, igual se ve). */
+  _vigilar(ms) {
     clearTimeout(this.vigilante);
     this.vigilante = setTimeout(() => {
-      if (this.estado === 'pensando') {
-        this.sistema(this.conexion === 'en-linea'
-          ? 'Byte no respondió. Revisa en Docker que la central esté bien (o los créditos de la voz).'
-          : 'No hay conexión con la central. Te lo mando apenas vuelva.');
-        this._ponerEstado(this.conexion === 'en-linea' ? 'reposo' : this.conexion);
+      if (this.estado !== 'pensando') return;
+      if (this.conexion !== 'en-linea') {
+        this.sistema('No hay conexión con la central. Te lo mando apenas vuelva.');
+        this._ponerEstado(this.conexion);
+      } else if (!this.empezo) {
+        this.sistema('La central no empezó a responder. Mira que Docker esté prendido; si tarda, vuelve a preguntar.');
+        this._ponerEstado('reposo');
+      } else {
+        this.sistema('Byte se demoró demasiado. Puede ser internet o la voz; vuelve a intentarlo.');
+        this._ponerEstado('reposo');
       }
-    }, ESPERA_RESPUESTA_MS);
-    this._guardar();
+    }, ms);
   }
 
   sistema(texto) {
@@ -120,6 +134,9 @@ class Conversacion {
     }
     if (m.type !== 'tts') return;   // 'stt' es el eco de lo que escribimos: ya lo mostramos
     if (m.state === 'start') {
+      // La central ya está trabajando: le damos más tiempo (herramientas, internet).
+      this.empezo = true;
+      this._vigilar(ESPERA_RESPUESTA_MS);
       this._ponerEstado('pensando');
     } else if (m.state === 'sentence_start' && m.text) {
       clearTimeout(this.vigilante);
