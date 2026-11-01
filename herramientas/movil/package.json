@@ -1,0 +1,19 @@
+{
+  "name": "byte-movil",
+  "version": "0.1.0",
+  "description": "Byte en el celular: puente en el HP que sirve la app (PWA) y la conecta con la central.",
+  "main": "puente.js",
+  "author": "Alejandro",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "node puente.js",
+    "test": "node --test \"test/*.test.js\"",
+    "prueba": "node test/probar-con-central-falsa.js"
+  },
+  "dependencies": {
+    "opusscript": "0.1.1",
+    "qrcode": "1.5.4",
+    "ws": "8.18.0"
+  }
+}
