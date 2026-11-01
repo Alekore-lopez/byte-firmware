@@ -92,6 +92,14 @@ Para actualizar después: `cd ~/byte-firmware && git pull && cd herramientas/des
 
 ---
 
+## Si el programa de Byte del PC está abierto
+
+En el HP, si tienes abierto el programa de Byte del PC (el de la carita en la pantalla), Byte Desk le pasa lo que escribes y **contesta él, con su voz y su cara**; tú ves la respuesta en el chat igual. Si está cerrado (o estás en la Mac), contesta Byte Desk solo, como siempre.
+
+- Se prende o apaga en **Ajustes → Voz** ("Si el programa de Byte del PC está abierto, que conteste él").
+- El programa del PC necesita la versión nueva: en `$HOME\py-xiaozhi` corre otra vez `python py_xiaozhi_es.py` (descárgalo de `herramientas/pc/`).
+- Por dentro: Byte Desk mira `http://127.0.0.1:8765/estado` cada 3 s, manda la pregunta a `/preguntar` y lee la respuesta de `/events`. Solo funciona dentro del mismo computador, y otras páginas web no pueden usarlo.
+
 ## Probar sin la central (central de mentira)
 
 En una terminal: `npm run central-falsa` · en otra: `npm start`. Responde frases de prueba y manda voz en silencio, para practicar sin gastar créditos.

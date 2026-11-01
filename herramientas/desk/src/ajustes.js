@@ -15,6 +15,7 @@ const POR_DEFECTO = {
   centralUrl: 'ws://127.0.0.1:8000/xiaozhi/v1/',
   token: '',
   vozActiva: true,
+  usarBytePc: true,   // si el programa de Byte del PC está abierto, que conteste él
   abrirAlIniciar: true,
   tareas: [],
 };

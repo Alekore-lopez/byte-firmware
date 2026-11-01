@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld('byte', {
   alError: escuchar('central:error'),
   alReintento: escuchar('central:reintento'),
   alIrA: escuchar('ir-a'),
+  alPc: escuchar('pc:estado'),
+  estadoPc: () => ipcRenderer.invoke('pc:estado'),
+  cambiarUsarPc: (activo) => ipcRenderer.invoke('ajustes:usar-pc', activo),
 
   // Ajustes
   leerAjustes: () => ipcRenderer.invoke('ajustes:leer'),

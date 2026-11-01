@@ -18,6 +18,7 @@ const SECCIONES = [
 let seccion = 'chat';
 let ajustes = {};
 let tareas = [];
+let pc = { abierto: false, responde: false, viejo: false };
 const voz = new VozDeByte();
 
 // ---------- Conversación en vivo ----------
@@ -37,7 +38,7 @@ function pintarChat() {
   }
   const est = $('#estado');
   est.dataset.estado = conv.conexion;
-  est.textContent = conv.textoEstado();
+  est.textContent = conv.textoEstado() + (pc.responde && conv.estado === 'reposo' ? ' · voz en el PC' : '');
   // El botón de enviar se vuelve "Detener" mientras Byte habla.
   const b = $('#boton-enviar');
   const hablando = conv.estado === 'hablando';
@@ -54,6 +55,7 @@ window.byte.alEstado((e) => {
   pintarInfoCentral();
 });
 window.byte.alPregunta((t) => conv.pregunta(t));
+window.byte.alPc((e) => { pc = e; pintarChat(); pintarPc(); });
 window.byte.alMensaje((m) => {
   if (m.type === 'tts' && m.state === 'start') voz.siguiente = 0;
   conv.mensaje(m);
@@ -247,6 +249,7 @@ function pintarAjustes() {
   $('#voz-activa').checked = ajustes.vozActiva;
   $('#voz-nota').textContent = voz.disponible ? 'Si en el HP ya escuchas a Byte por otro programa, puedes apagarla aquí para no oírlo dos veces.' : 'Este computador no puede reproducir la voz (falta el decodificador Opus).';
   $('#abrir-inicio').checked = ajustes.abrirAlIniciar;
+  pintarPc();
   $('#texto-inicio').textContent = `Abrir Byte al encender ${ES_MAC ? 'la Mac' : 'el PC'}`;
   $('#atajo').textContent = ES_MAC ? '⌥ Opción + Espacio' : 'Ctrl + Shift + B';
   pintarInfoCentral();
@@ -263,6 +266,16 @@ $('#f-central').addEventListener('submit', async (e) => {
   pintarInfoCentral();
 });
 $('#reconectar').addEventListener('click', () => { ultimoError = ''; window.byte.reconectar(); });
+function pintarPc() {
+  const nota = $('#pc-nota');
+  if (!nota) return;
+  $('#usar-pc').checked = ajustes.usarBytePc !== false;
+  nota.innerHTML = pc.responde ? '<span class="pill ok">ahora</span> El programa del PC está abierto: él contesta lo que escribas aquí.'
+    : pc.viejo ? '<span class="pill pide">actualizar</span> El programa del PC está abierto pero es una versión vieja. Corre otra vez py_xiaozhi_es.py.'
+    : pc.abierto ? 'El programa del PC está abierto, pero lo apagaste aquí: contesta Byte Desk.'
+    : 'El programa del PC está cerrado: contesta Byte Desk.';
+}
+$('#usar-pc').addEventListener('change', async (e) => { ajustes.usarBytePc = await window.byte.cambiarUsarPc(e.target.checked); pintarPc(); });
 $('#voz-activa').addEventListener('change', async (e) => {
   ajustes.vozActiva = await window.byte.cambiarVoz(e.target.checked);
   if (!ajustes.vozActiva) voz.callar();
@@ -275,6 +288,7 @@ $('#borrar-chat').addEventListener('click', () => { conv.borrar(); pintarChat();
 (async function arrancar() {
   ajustes = await window.byte.leerAjustes();
   tareas = (await window.byte.leerTareas()) || [];
+  pc = await window.byte.estadoPc();
   const e = await window.byte.estado();
   conv.conexionCambio({ estado: e.estado });
   irA('chat');

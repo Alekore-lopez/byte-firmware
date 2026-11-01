@@ -12,6 +12,7 @@
 const path = require('node:path');
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, screen, shell, Notification } = require('electron');
 const { Central } = require('./central');
+const { BytePc, normalizar } = require('./byte-pc');
 const { Ajustes, normalizarUrl } = require('./ajustes');
 const sistema = require('./sistema');
 
@@ -24,6 +25,8 @@ let ventana = null;     // ventana grande
 let panel = null;       // panel rápido que cae desde la barra
 let bandeja = null;
 let central = null;
+let bytePc = null;     // el programa de Byte del PC, si está abierto
+let ultimaPregunta = ''; // para no repetir en el chat lo que ya escribimos
 let ajustes = null;
 let saliendo = false;
 
@@ -253,16 +256,50 @@ function iniciarCentral() {
   central.conectar();
 }
 
+function estadoPc() {
+  return {
+    abierto: Boolean(bytePc && bytePc.abierto),
+    responde: Boolean(bytePc && bytePc.disponible && ajustes.get('usarBytePc')),
+    viejo: Boolean(bytePc && bytePc.abierto && !bytePc.puedePreguntar),
+  };
+}
+
+function iniciarBytePc() {
+  bytePc = new BytePc();
+  bytePc.on('estado', () => enviarATodas('pc:estado', estadoPc()));
+  bytePc.on('mensaje', (m) => {
+    if (!ajustes.get('usarBytePc') || !m || typeof m !== 'object') return;
+    if (m.type === 'stt') {
+      // Si lo que oyó la central no es lo que escribimos, es que le hablaste
+      // por voz al programa del PC: también lo mostramos en el chat.
+      if (m.text && normalizar(m.text) !== ultimaPregunta) enviarATodas('central:pregunta', `🎤 ${m.text}`);
+      ultimaPregunta = '';
+      return;
+    }
+    if (m.type === 'llm' || m.type === 'tts') enviarATodas('central:mensaje', m);
+  });
+  bytePc.iniciar();
+}
+
 // ---------- Lo que la interfaz puede pedir (lista cerrada) ----------
 
 function registrarPeticiones() {
-  ipcMain.handle('byte:preguntar', (_e, texto) => {
+  ipcMain.handle('byte:preguntar', async (_e, texto) => {
     if (typeof texto !== 'string' || texto.length > 2000 || !texto.trim()) return false;
     // Todas las ventanas muestran la pregunta (la grande y el panel rápido).
-    enviarATodas('central:pregunta', texto.trim());
-    return central.preguntar(texto);
+    const t = texto.trim();
+    enviarATodas('central:pregunta', t);
+    ultimaPregunta = normalizar(t);
+    // Si el programa de Byte del PC está abierto, que conteste él (voz y cara);
+    // si no, o si falla, contesta Byte Desk directo con la central.
+    if (ajustes.get('usarBytePc') && bytePc && bytePc.disponible) {
+      if (await bytePc.preguntar(t)) return true;
+    }
+    return central.preguntar(t);
   });
   ipcMain.handle('byte:interrumpir', () => central.interrumpir());
+  ipcMain.handle('pc:estado', () => estadoPc());
+  ipcMain.handle('ajustes:usar-pc', (_e, activo) => { ajustes.set('usarBytePc', Boolean(activo)); enviarATodas('pc:estado', estadoPc()); return Boolean(activo); });
   ipcMain.handle('byte:reconectar', () => central.reconectar());
   ipcMain.handle('byte:estado', () => ({ estado: central.estado, url: central.url }));
 
@@ -307,6 +344,7 @@ app.whenReady().then(() => {
   crearPanel();
   crearBandeja();
   iniciarCentral();
+  iniciarBytePc();
   if (ajustes.get('abrirAlIniciar') && (ES_MAC || ES_WIN)) aplicarInicio(true);
   if (!globalShortcut.register(ATAJO, alternarPanel)) console.warn(`El atajo ${ATAJO} ya lo usa otra app`);
   if (ES_MAC) app.on('activate', () => mostrarVentana());
@@ -316,6 +354,7 @@ app.on('before-quit', () => { saliendo = true; });
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   if (central) central.cerrar();
+  if (bytePc) bytePc.detener();
 });
 // Cerrar todas las ventanas NO apaga a Byte (vive en la barra).
 app.on('window-all-closed', (e) => e.preventDefault());
