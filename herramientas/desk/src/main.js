@@ -10,7 +10,7 @@
 // Solo puede pedir cosas concretas a través de preload.js (lista cerrada).
 
 const path = require('node:path');
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, screen, shell, Notification } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, globalShortcut, screen, shell, Notification, systemPreferences } = require('electron');
 const { Central } = require('./central');
 const { BytePc, normalizar } = require('./byte-pc');
 const { Ajustes, normalizarUrl } = require('./ajustes');
@@ -31,12 +31,20 @@ let ultimaPregunta = ''; // para no repetir en el chat lo que ya escribimos
 let ajustes = null;
 let saliendo = false;
 
+// Micrófono: como en la placa, tocas la cara y Byte escucha. Después de que
+// contesta vuelve a escuchar un rato por si sigues hablando, y luego descansa.
+const ESPERA_VOZ_MS = 12000;
+const mic = { activo: false, temporizador: null };
+
 // Solo una copia de Byte Desk a la vez: si la abren de nuevo, mostramos la que ya está.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   // Si el botón "Byte" la abre otra vez con --oculto, no mostramos la ventana.
-  app.on('second-instance', (_e, argv) => { if (!argv.includes('--oculto')) mostrarVentana(); });
+  app.on('second-instance', (_e, argv) => {
+    if (argv.includes('--cara')) mostrarCara();      // acceso directo "Cara de Byte"
+    else if (!argv.includes('--oculto')) mostrarVentana();
+  });
 }
 
 // ---------- Ventanas ----------
@@ -89,7 +97,7 @@ function crearVentana() {
   ventana.loadFile(path.join(RAIZ, 'renderer', 'index.html'));
   ventana.once('ready-to-show', () => {
     // Si arrancó con el computador, empieza escondido en la barra.
-    if (!process.argv.includes('--oculto')) ventana.show();
+    if (!process.argv.includes('--oculto') && !process.argv.includes('--cara')) ventana.show();
   });
   // Cerrar = esconder. Byte sigue en la barra.
   ventana.on('close', (e) => {
@@ -223,6 +231,7 @@ function menuBandeja() {
     { label: 'Abrir Byte Desk', click: () => mostrarVentana() },
     { label: 'Hablar con Byte', accelerator: ATAJO, click: alternarPanel },
     { label: 'Ver la cara de Byte', click: mostrarCara },
+    { label: mic.activo ? 'Dejar de escuchar' : 'Hablarle con la voz', click: () => alternarMic() },
     { type: 'separator' },
     { label: 'Reconectar con la central', click: () => central.reconectar() },
     {
@@ -283,13 +292,14 @@ function iniciarCentral() {
     token: ajustes.get('token'),
   });
   central.on('estado', (e) => {
+    if (e.estado !== 'en-linea') apagarMic();
     enviarATodas('central:estado', e);
     if (bandeja) {
       bandeja.setImage(iconoBandeja(e.estado));
       bandeja.setToolTip(e.estado === 'en-linea' ? 'Byte Desk · en línea' : 'Byte Desk · sin conexión');
     }
   });
-  central.on('mensaje', (m) => enviarATodas('central:mensaje', m));
+  central.on('mensaje', (m) => { micSegunCentral(m); enviarATodas('central:mensaje', m); });
   central.on('error-conexion', (texto) => enviarATodas('central:error', texto));
   central.on('reintento', (r) => enviarATodas('central:reintento', r));
   // La voz solo suena en la ventana grande (para no oír a Byte dos veces).
@@ -324,6 +334,84 @@ function iniciarBytePc() {
   bytePc.iniciar();
 }
 
+// ---------- Micrófono ----------
+
+function avisarMic(estado) {
+  enviarATodas('mic:estado', estado);
+}
+
+function controlMic(orden) {
+  if (ventana && !ventana.isDestroyed()) ventana.webContents.send('mic:control', orden);
+}
+
+/** Si nadie habla en un rato, Byte deja de escuchar (como la placa). */
+function esperarVoz() {
+  clearTimeout(mic.temporizador);
+  mic.temporizador = setTimeout(() => apagarMic(), ESPERA_VOZ_MS);
+}
+
+async function encenderMic() {
+  if (central.estado !== 'en-linea') {
+    enviarATodas('central:error', 'Byte no está conectado a la central: no puedo escucharte todavía.');
+    return false;
+  }
+  if (ES_MAC && systemPreferences.getMediaAccessStatus('microphone') !== 'granted') {
+    const ok = await systemPreferences.askForMediaAccess('microphone');
+    if (!ok) {
+      enviarATodas('central:error', 'Sin permiso para el micrófono: Configuración del Sistema → Privacidad y seguridad → Micrófono → activa Byte Desk / Electron.');
+      return false;
+    }
+  }
+  if (!central.escuchar()) return false;
+  mic.activo = true;
+  controlMic('empezar');
+  avisarMic('escuchando');
+  esperarVoz();
+  return true;
+}
+
+function apagarMic() {
+  clearTimeout(mic.temporizador);
+  if (!mic.activo) return;
+  mic.activo = false;
+  controlMic('detener');
+  central.dejarDeEscuchar();
+  avisarMic('apagado');
+}
+
+function alternarMic() {
+  return mic.activo ? (apagarMic(), false) : encenderMic();
+}
+
+/** Lo que dice la central mueve el micrófono: callado mientras Byte habla. */
+function micSegunCentral(m) {
+  if (!mic.activo || !m) return;
+  if (m.type === 'stt' && m.text) {
+    if (m.text.startsWith('% handle_exit_intent')) { apagarMic(); return; }   // "chao Byte"
+    if (!m.text.startsWith('% ')) {
+      // Lo que oyó la central: también va al chat, con un micrófono.
+      ultimaPregunta = normalizar(m.text);
+      enviarATodas('central:pregunta', `🎤 ${m.text}`);
+    }
+    clearTimeout(mic.temporizador);
+    controlMic('pausar');
+    avisarMic('pausado');
+  } else if (m.type === 'tts' && m.state === 'start') {
+    clearTimeout(mic.temporizador);
+    controlMic('pausar');
+    avisarMic('pausado');
+  } else if (m.type === 'tts' && m.state === 'stop') {
+    // Dejamos terminar la última frase y volvemos a escuchar.
+    setTimeout(() => {
+      if (!mic.activo) return;
+      if (!central.escuchar()) { apagarMic(); return; }
+      controlMic('reanudar');
+      avisarMic('escuchando');
+      esperarVoz();
+    }, 700);
+  }
+}
+
 // ---------- Lo que la interfaz puede pedir (lista cerrada) ----------
 
 function registrarPeticiones() {
@@ -341,6 +429,17 @@ function registrarPeticiones() {
     return central.preguntar(t);
   });
   ipcMain.handle('byte:interrumpir', () => central.interrumpir());
+  ipcMain.handle('byte:hablar', () => alternarMic());
+  ipcMain.on('mic:audio', (e, bytes) => {
+    // Solo la ventana grande graba, y solo mientras Byte escucha.
+    if (!mic.activo || !ventana || e.sender !== ventana.webContents) return;
+    if (!(bytes instanceof Uint8Array) || bytes.byteLength > 4000) return;
+    central.enviarAudio(Buffer.from(bytes));
+  });
+  ipcMain.on('mic:error', (_e, texto) => {
+    apagarMic();
+    enviarATodas('central:error', String(texto || 'Error del micrófono').slice(0, 300));
+  });
   ipcMain.handle('pc:estado', () => estadoPc());
   ipcMain.handle('ajustes:usar-pc', (_e, activo) => { ajustes.set('usarBytePc', Boolean(activo)); enviarATodas('pc:estado', estadoPc()); return Boolean(activo); });
   ipcMain.handle('byte:reconectar', () => central.reconectar());
@@ -386,7 +485,7 @@ app.whenReady().then(() => {
   // Mac: con `npm start` el Dock mostraría el ícono de Electron; ponemos el de Byte.
   if (ES_MAC && app.dock) {
     app.dock.setIcon(path.join(RAIZ, 'assets', 'icono.png'));
-    if (process.argv.includes('--oculto')) app.dock.hide();
+    if (process.argv.includes('--oculto') || process.argv.includes('--cara')) app.dock.hide();
   }
   registrarPeticiones();
   crearVentana();
@@ -397,11 +496,13 @@ app.whenReady().then(() => {
   if (ajustes.get('abrirAlIniciar') && (ES_MAC || ES_WIN)) aplicarInicio(true);
   if (!globalShortcut.register(ATAJO, alternarPanel)) console.warn(`El atajo ${ATAJO} ya lo usa otra app`);
   if (ES_MAC) app.on('activate', () => mostrarVentana());
+  if (process.argv.includes('--cara')) mostrarCara();
 });
 
 app.on('before-quit', () => { saliendo = true; });
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  apagarMic();
   if (central) central.cerrar();
   if (bytePc) bytePc.detener();
 });

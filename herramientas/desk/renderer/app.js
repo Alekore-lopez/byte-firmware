@@ -61,9 +61,31 @@ window.byte.alMensaje((m) => {
   conv.mensaje(m);
 });
 window.byte.alAudio((bytes) => voz.paquete(bytes));
+
+// ---------- Micrófono (tocar la cara o el botón: Byte te escucha) ----------
+// Esta ventana es la que graba (está siempre viva, aunque esté escondida).
+const micro = new MicrofonoDeByte({
+  alPaquete: (bytes) => window.byte.enviarAudio(bytes),
+  alError: (t) => window.byte.micError(t),
+});
+window.byte.alControlMic(async (orden) => {
+  if (orden === 'empezar') await micro.empezar();
+  else if (orden === 'pausar') micro.pausar();
+  else if (orden === 'reanudar') micro.reanudar();
+  else if (orden === 'detener') micro.detener();
+});
+function pintarMic(estado) {
+  const b = $('#boton-mic');
+  b.innerHTML = icono('mic');
+  b.classList.toggle('escuchando', estado === 'escuchando');
+  b.title = estado === 'apagado' ? 'Hablarle con la voz' : 'Dejar de escuchar';
+}
+pintarMic('apagado');
+window.byte.alMic(pintarMic);
+$('#boton-mic').addEventListener('click', () => window.byte.hablar());
 let ultimoError = '';
 let proximoIntento = 0;
-window.byte.alError((t) => { ultimoError = t; pintarInfoCentral(); });
+window.byte.alError((t) => { ultimoError = t; pintarInfoCentral(); if (/micr[oó]fono|escucharte/i.test(t)) conv.sistema(t); });
 window.byte.alReintento((r) => { proximoIntento = Date.now() + r.enMs; pintarInfoCentral(); });
 
 async function preguntar(texto) {

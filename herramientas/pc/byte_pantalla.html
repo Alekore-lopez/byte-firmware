@@ -1033,10 +1033,11 @@ function onLive(m) {
   }
 }
 function liveTap() {
-  // En Byte Desk: tocar la cara abre el chat para escribirle (o corta si está hablando)
+  // En Byte Desk: tocar la cara = Byte te escucha (otra vez = deja de escuchar).
+  // Si está hablando, lo corta.
   if (enDesk) {
     if (S.dev === 'speaking' || S.dev === 'thinking') window.byte.interrumpir();
-    else window.byte.abrirVentana('chat');
+    else window.byte.hablar();
     beep([784, 1046], .05); return;
   }
   // Como en la placa: tocar la cara empieza a conversar, o corta lo que esté pasando
@@ -1055,6 +1056,10 @@ function deskConnect() {
   b.alPregunta((t) => {
     onLive({ type: 'state', state: 'listening' });
     onLive({ type: 'stt', text: String(t || '').replace(/^🎤\s*/, '') });
+  });
+  if (b.alMic) b.alMic((estado) => {
+    if (estado === 'escuchando') onLive({ type: 'state', state: 'listening' });
+    else if (estado === 'apagado' && S.dev === 'listening') onLive({ type: 'state', state: 'idle' });
   });
   b.alMensaje((m) => {
     if (!m || typeof m !== 'object') return;

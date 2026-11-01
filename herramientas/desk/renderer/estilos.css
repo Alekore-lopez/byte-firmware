@@ -139,3 +139,8 @@ input[type=checkbox]{accent-color:var(--neon);width:16px;height:16px}
 /* Botón "Ver la cara de Byte" (abre la pantalla de Byte en su propia ventana) */
 .ver-cara{margin:0 6px 14px;padding:8px 12px;border-radius:10px;border:1px solid rgba(242,237,225,.18);background:rgba(242,237,225,.06);color:inherit;font:inherit;font-size:13px;cursor:pointer;text-align:left}
 .ver-cara:hover{background:rgba(242,237,225,.12)}
+
+/* Botón del micrófono: brilla en menta mientras Byte escucha */
+.boton-redondo.mic{background:rgba(242,237,225,.08);color:var(--luna);box-shadow:none;margin-right:6px}
+.boton-redondo.mic.escuchando{background:#9ff7e4;color:var(--noche);box-shadow:0 0 0 0 rgba(159,247,228,.6);animation:latido 1.4s ease-out infinite}
+@keyframes latido{0%{box-shadow:0 0 0 0 rgba(159,247,228,.55)}100%{box-shadow:0 0 0 12px rgba(159,247,228,0)}}
