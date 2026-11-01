@@ -74,13 +74,20 @@ asyncio.run(main())
 '@
 [IO.File]::WriteAllText((Join-Path $data "probar_voces.py"), $py, $utf8)
 $carpeta = Join-Path $data "voces-prueba"
-if (Test-Path $carpeta) { Remove-Item $carpeta -Recurse -Force }
-
-Write-Host ""
-Write-Host "=== 1) Grabando las voces (tarda 1 o 2 minutos) ===" -ForegroundColor Cyan
-docker exec byte-servidor python data/probar_voces.py $tiernaPitch $tiernaRate
-if ($LASTEXITCODE -ne 0) { throw "No se pudieron grabar las voces. Revisa que el PC tenga internet." }
-$voces = [IO.File]::ReadAllText((Join-Path $carpeta "voces.json"), $utf8) | ConvertFrom-Json
+$lista = Join-Path $carpeta "voces.json"
+$grabar = $true
+if (Test-Path $lista) {
+  $r = (Read-Host "Ya grabaste las voces antes. Volver a grabarlas? (S = si, Enter = usar las que ya estan)").Trim().ToUpper()
+  $grabar = ($r -eq "S")
+}
+if ($grabar) {
+  if (Test-Path $carpeta) { Remove-Item $carpeta -Recurse -Force }
+  Write-Host ""
+  Write-Host "=== 1) Grabando las voces (tarda 1 o 2 minutos) ===" -ForegroundColor Cyan
+  docker exec byte-servidor python data/probar_voces.py $tiernaPitch $tiernaRate
+  if ($LASTEXITCODE -ne 0) { throw "No se pudieron grabar las voces. Revisa que el PC tenga internet." }
+}
+$voces = [IO.File]::ReadAllText($lista, $utf8) | ConvertFrom-Json
 
 # Nombre bonito del pais
 $paises = @{ "es-AR"="Argentina"; "es-BO"="Bolivia"; "es-CL"="Chile"; "es-CO"="Colombia"; "es-CR"="Costa Rica";
@@ -128,25 +135,48 @@ if ($tipo -eq "T") { $pitch = $tiernaPitch; $rate = $tiernaRate }
 
 Write-Host ""
 Write-Host "=== 3) Poniendo la voz en Byte ===" -ForegroundColor Cyan
+# Se edita linea por linea: busca "EdgeTTS:" y cambia voice/pitch/rate dentro de su bloque.
+# Si el archivo no tiene bloque EdgeTTS, lo crea debajo de "TTS:".
 $texto = [IO.File]::ReadAllText($conf, $utf8)
-$m = [regex]::Match($texto, "(?ms)^([ \t]+)EdgeTTS:[ \t]*\r?\n(.*?)(?=^[ \t]{0,2}\S|\z)")
-if (-not $m.Success) { throw "No encontre el bloque EdgeTTS en $conf. Mandame una captura." }
-$bloque = $m.Groups[2].Value
-$sangria = $m.Groups[1].Value + "  "
 $nl = if ($texto.Contains("`r`n")) { "`r`n" } else { "`n" }
-function Poner($b, $clave, $valor) {
-  $re = "(?m)^([ \t]+)" + $clave + ":[^\r\n]*"
-  if ([regex]::IsMatch($b, $re)) { return ([regex]$re).Replace($b, "`${1}${clave}: $valor", 1) }
-  return "$sangria${clave}: $valor$nl" + $b
+$lineas = New-Object System.Collections.Generic.List[string]
+$lineas.AddRange([string[]]($texto -split "\r?\n"))
+function Sangria($l) { return $l.Length - $l.TrimStart().Length }
+
+$ini = -1
+for ($i = 0; $i -lt $lineas.Count; $i++) {
+  if ($lineas[$i] -match '^\s*EdgeTTS\s*:\s*(#.*)?$') { $ini = $i; break }
 }
-$nuevo = Poner $bloque "voice" $elegida.voz
-$nuevo = Poner $nuevo "pitch" $pitch
-$nuevo = Poner $nuevo "rate" $rate
-$texto = $texto.Substring(0, $m.Groups[2].Index) + $nuevo + $texto.Substring($m.Groups[2].Index + $bloque.Length)
-# Que Byte use Edge (por si estaba en ElevenLabs)
-$texto = [regex]::Replace($texto, "(?m)^([ \t]+TTS:[ \t]*)ElevenLabsTTS\b", "`${1}EdgeTTS")
+if ($ini -lt 0) {
+  # No hay bloque EdgeTTS: lo creamos debajo de la seccion TTS: (sin sangria)
+  $tts = -1
+  for ($i = 0; $i -lt $lineas.Count; $i++) { if ($lineas[$i] -match '^TTS\s*:\s*(#.*)?$') { $tts = $i; break } }
+  $nuevo = @("  EdgeTTS:", "    type: edge", "    voice: $($elegida.voz)", "    pitch: $pitch", "    rate: $rate", "    output_dir: tmp/")
+  if ($tts -lt 0) { $lineas.Add("TTS:"); $lineas.AddRange([string[]]$nuevo) }
+  else { $lineas.InsertRange($tts + 1, [string[]]$nuevo) }
+  Write-Host "No habia bloque EdgeTTS: lo agregue." -ForegroundColor Yellow
+} else {
+  $base = Sangria $lineas[$ini]
+  $fin = $ini + 1
+  while ($fin -lt $lineas.Count -and ($lineas[$fin].Trim() -eq "" -or (Sangria $lineas[$fin]) -gt $base)) { $fin++ }
+  $hijo = " " * ($base + 2)
+  for ($k = $ini + 1; $k -lt $fin; $k++) {
+    if ($lineas[$k].Trim() -ne "" -and -not $lineas[$k].Trim().StartsWith("#")) { $hijo = " " * (Sangria $lineas[$k]); break }
+  }
+  foreach ($par in @(@("voice", $elegida.voz), @("pitch", $pitch), @("rate", $rate))) {
+    $hecho = $false
+    for ($k = $ini + 1; $k -lt $fin; $k++) {
+      if ($lineas[$k] -match ('^\s*' + $par[0] + '\s*:')) { $lineas[$k] = "$hijo$($par[0]): $($par[1])"; $hecho = $true; break }
+    }
+    if (-not $hecho) { $lineas.Insert($ini + 1, "$hijo$($par[0]): $($par[1])"); $fin++ }
+  }
+}
+# Que Byte use Edge (la linea "TTS: ..." de selected_module)
+for ($i = 0; $i -lt $lineas.Count; $i++) {
+  if ($lineas[$i] -match '^(\s+TTS\s*:\s*)[A-Za-z_]+TTS\b(.*)$') { $lineas[$i] = $Matches[1] + "EdgeTTS" + $Matches[2] }
+}
 Copy-Item $conf "$conf.antes-de-voz-edge" -Force
-[IO.File]::WriteAllText($conf, $texto, $utf8)
+[IO.File]::WriteAllText($conf, ($lineas -join $nl), $utf8)
 docker restart byte-servidor | Out-Null
 $como = if ($pitch) { "tierna" } else { "normal" }
 Write-Host "Listo: Byte ahora habla con $($elegida.voz) ($como). Dale 20 segundos y dile 'Byte'." -ForegroundColor Green
