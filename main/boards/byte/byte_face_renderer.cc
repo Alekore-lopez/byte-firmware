@@ -10,6 +10,11 @@ constexpr float kPi = 3.14159265f;
 constexpr float kGap = 88;              // distancia entre los centros de los ojos (diseño)
 constexpr uint32_t kTransitionMs = 260; // duración del cambio de cara
 constexpr uint32_t kBlinkMs = 150;      // duración de un parpadeo
+// Encendido: cuándo pasa cada cosa (ms desde que arranca)
+constexpr float kBootLineMs = 450;      // 1. la línea de energía se estira
+constexpr float kBootEyesMs = 1000;     // 2. los anillos se cierran; 3. se encienden los ojos
+constexpr float kBootAccMs = 1600;      // 4. aparecen los accesorios
+constexpr uint32_t kMoon = 0xf2ede1;    // blanco luna, el color de marca
 
 float Lerp(float a, float b, float k) { return a + (b - a) * k; }
 float EaseOut(float k) { return 1 - powf(1 - k, 3); }  // rápido al inicio, suave al final
@@ -57,14 +62,14 @@ void FillTriangle(lv_layer_t* layer, float x0, float y0, float x1, float y1, flo
 }
 
 void Line(lv_layer_t* layer, float x1, float y1, float x2, float y2, float width,
-          lv_color_t color, lv_opa_t opa) {
+          lv_color_t color, lv_opa_t opa, bool round = true) {
     lv_draw_line_dsc_t dsc;
     lv_draw_line_dsc_init(&dsc);
     dsc.color = color;
     dsc.opa = opa;
     dsc.width = std::max<int32_t>(1, R(width));
-    dsc.round_start = 1;
-    dsc.round_end = 1;
+    dsc.round_start = round;
+    dsc.round_end = round;
     dsc.p1.x = R(x1); dsc.p1.y = R(y1);
     dsc.p2.x = R(x2); dsc.p2.y = R(y2);
     lv_draw_line(layer, &dsc);
@@ -134,6 +139,8 @@ void ByteFaceRenderer::Init(int width, int height, const byte_face_t* face, uint
     // El diseño es de 240x240. Se centra a lo ancho y se agranda un 25 %: los
     // ojos quedan debajo de la barra de estado y la boca encima de la barra de
     // subtítulos (unos 40 px abajo, donde salen el código de activación y el wifi).
+    width_ = width;
+    height_ = height;
     screen_cx_ = width / 2.0f;
     screen_cy_ = height * 0.32f;
     scale_ = 1.25f * height / 240.0f;
@@ -151,10 +158,31 @@ void ByteFaceRenderer::Init(int width, int height, const byte_face_t* face, uint
 
 uint16_t ByteFaceRenderer::EffectiveAcc(const byte_face_t* face) const {
     uint16_t acc = face->acc;
-    if (talking_ && !(acc & ACC_ANY_MOUTH)) {
-        acc |= ACC_MOUTH;
+    if (talking_) {
+        acc |= ACC_RING;  // el halo late con la voz de Byte
+        if (!(acc & ACC_ANY_MOUTH)) {
+            acc |= ACC_MOUTH;  // y si la cara no trae boca, ondas de voz
+        }
+    }
+    if (booting_ && boot_ms_ < kBootAccMs) {
+        acc = ACC_NONE;  // mientras se enciende, solo los ojos
     }
     return acc;
+}
+
+void ByteFaceRenderer::StartBoot(uint32_t now_ms) {
+    booting_ = true;
+    boot_beep_ = false;
+    boot_start_ = now_ms;
+    boot_ms_ = 0;
+}
+
+bool ByteFaceRenderer::TakeBootBeep() {
+    if (booting_ && !boot_beep_ && boot_ms_ >= kBootEyesMs) {
+        boot_beep_ = true;
+        return true;
+    }
+    return false;
 }
 
 void ByteFaceRenderer::SetFace(const byte_face_t* face, uint32_t now_ms) {
@@ -179,6 +207,21 @@ void ByteFaceRenderer::StartGame(ByteGame game, uint32_t now_ms) {
 bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
     now_ = now_ms;
 
+    // 0. Encendido y voz
+    bool was_booting = booting_;
+    if (booting_) {
+        boot_ms_ = (float)(now_ms - boot_start_);
+        if (boot_ms_ >= kBootMs) {
+            booting_ = false;
+            boot_clear_ = true;  // un cuadro más a pantalla completa para borrar el destello
+        }
+    }
+    // La voz sube rápido y baja despacio, como la aguja de un medidor
+    voice_ += (voice_in_ - voice_) * (voice_in_ > voice_ ? 0.55f : 0.14f);
+    if (voice_ < 0.005f) {
+        voice_ = 0;
+    }
+
     // 1. Transición: interpolar cada número del ojo hacia la cara destino
     float k = std::min(1.0f, (float)(now_ms - transition_start_) / kTransitionMs);
     k_ = EaseOut(k);
@@ -200,6 +243,9 @@ bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
     }
 
     // 2. Parpadeo: cerrar y abrir en 150 ms; a veces dos seguidos
+    if (booting_) {
+        next_blink_ = std::max(next_blink_, now_ms + 800);  // no parpadea mientras se enciende
+    }
     if (!blinking_ && now_ms >= next_blink_) {
         blinking_ = true;
         blink_start_ = now_ms;
@@ -237,6 +283,21 @@ bool ByteFaceRenderer::Update(uint32_t now_ms, lv_area_t* dirty) {
 
     ComputePlay();
     ComputeFrame();
+
+    // Encendido: los ojos nacen en blanco luna y pasan a su color
+    if (booting_) {
+        float k = std::clamp((boot_ms_ - 1500) / 700, 0.0f, 1.0f);
+        color_ = lv_color_mix(color_, lv_color_hex(kMoon), (uint8_t)(k * 255));
+    }
+    if (was_booting || boot_clear_) {
+        // Toda la pantalla: la línea y el destello pasan por todas partes
+        boot_clear_ = booting_;
+        *dirty = {0, 0, width_ - 1, height_ - 1};
+        last_area_ = *dirty;
+        first_frame_ = false;
+        last_acc_ = frame_acc_in_ | frame_acc_out_;
+        return true;
+    }
 
     // 4. Solo repintar lo que cambió: redibujar los 320x240 por SPI tarda ~60 ms
     uint32_t sig = lv_color_to_u32(color_);
@@ -315,6 +376,12 @@ void ByteFaceRenderer::ComputeFrame() {
         o.moon = roundf(sun * swing * (i == 0 ? -1 : 1));
         o.corona = roundf((1 + 0.06f * sinf(now_ * 0.002f)) * 32) / 32;
         o.sleep = play_.lid;
+        if (booting_) {
+            // Los ojos se encienden de una rayita a su alto normal
+            float g = EaseOut(std::clamp((boot_ms_ - kBootEyesMs) / 450, 0.0f, 1.0f));
+            o.h = roundf(std::max(4.0f, o.h * g));
+            o.blink = 1;
+        }
     }
     frame_acc_in_ = EffectiveAcc(target_);
     frame_acc_out_ = acc_out_ & ~frame_acc_in_;
@@ -459,7 +526,7 @@ void ByteFaceRenderer::AccArea(int index, lv_area_t* area) const {
     switch (1 << index) {
         case ACC_RING:       x1 = 2;   y1 = -12; x2 = 238; y2 = 240; break;
         case ACC_DOTS:       x1 = 90;  y1 = 172; x2 = 150; y2 = 196; break;
-        case ACC_MOUTH:      x1 = 86;  y1 = 166; x2 = 154; y2 = 204; break;
+        case ACC_MOUTH:      x1 = 68;  y1 = 162; x2 = 172; y2 = 208; break;
         case ACC_MOUTH_OPEN: x1 = 94;  y1 = 170; x2 = 146; y2 = 206; break;
         case ACC_O_MOUTH:    x1 = 104; y1 = 170; x2 = 136; y2 = 202; break;
         case ACC_CHECK:      x1 = 98;  y1 = 166; x2 = 144; y2 = 204; break;
@@ -477,12 +544,23 @@ void ByteFaceRenderer::Draw(lv_layer_t* layer) {
     if (target_ == nullptr) {
         return;
     }
-    DrawEye(layer, frame_eyes_[0], 0);
-    DrawEye(layer, frame_eyes_[1], 1);
+    // El halo va detrás de los ojos
+    DrawHalo(layer, frame_acc_out_, Opa(1 - k_, LV_OPA_COVER));
+    DrawHalo(layer, frame_acc_in_, Opa(k_, LV_OPA_COVER));
+    if (booting_) {
+        DrawBoot(layer, false);
+    }
+    if (!booting_ || boot_ms_ >= kBootEyesMs) {
+        DrawEye(layer, frame_eyes_[0], 0);
+        DrawEye(layer, frame_eyes_[1], 1);
+    }
     // Los accesorios nuevos aparecen y los viejos se desvanecen durante la transición
     DrawAcc(layer, frame_acc_out_, Opa(1 - k_, LV_OPA_COVER));
     DrawAcc(layer, frame_acc_in_, Opa(k_, LV_OPA_COVER));
     DrawPlay(layer);
+    if (booting_) {
+        DrawBoot(layer, true);
+    }
 }
 
 void ByteFaceRenderer::DrawEye(lv_layer_t* layer, const EyeOnScreen& e, int side) const {
@@ -578,10 +656,6 @@ void ByteFaceRenderer::DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) co
     const lv_color_t c = color_;
     const lv_color_t bg = lv_color_black();
 
-    if (acc & ACC_RING) {
-        float p = fmodf(t, 1400) / 1400;
-        Arc(layer, X(120), Y(cy + 6), (88 + p * 24) * s, 3 * s, 0, 360, c, Opa(0.55f * (1 - p), opa));
-    }
     if (acc & ACC_DOTS) {
         for (int i = 0; i < 3; i++) {
             float b = std::max(0.0f, sinf(t / 180 - i * 0.9f));
@@ -590,13 +664,7 @@ void ByteFaceRenderer::DrawAcc(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) co
         }
     }
     if (acc & ACC_MOUTH) {
-        const float hs[5] = {0.6f, 1, 0.8f, 1, 0.6f};
-        for (int i = 0; i < 5; i++) {
-            float v = 0.25f + 0.75f * fabsf(sinf(t / (110 + i * 23) + i * 1.7f)) * hs[i];
-            float h = 6 + 22 * v;
-            float x = 93 + i * 12 - 3;
-            FillRect(layer, X(x), Y(184 - h / 2), X(x + 7), Y(184 + h / 2), R(3.5f * s), c, opa);
-        }
+        DrawWaves(layer, opa);
     }
     if (acc & ACC_MOUTH_OPEN) {
         float o = 1 + 0.08f * sinf(t / 70);
@@ -711,5 +779,117 @@ void ByteFaceRenderer::DrawPlay(lv_layer_t* layer) const {
         // Bostezo: una boca ovalada que se abre y se cierra
         FillEllipse(layer, X(120), Y(182), 9 * s, (4 + 9 * play_.yawn) * s, color_,
                     Opa(play_.yawn, LV_OPA_COVER));
+    }
+}
+
+// Halo: dos arcos a los lados de la cara, como los de un reactor, que se
+// agrandan y brillan más cuanto más fuerte suena la voz. Detrás va un brillo
+// ancho y transparente (el "neón") y por fuera un arco fino que se mece.
+void ByteFaceRenderer::DrawHalo(lv_layer_t* layer, uint16_t acc, lv_opa_t opa) const {
+    if (!(acc & ACC_RING) || opa == LV_OPA_TRANSP) {
+        return;
+    }
+    const float s = scale_, v = voice_;
+    const float cx = X(120), cy = Y(132);
+    const float r = (92 + v * 9) * s;
+    const float span = 36 + 22 * v;                    // medio arco, en grados
+    const float sway = 8 * sinf(now_ / 900.0f);        // el arco de afuera se mece
+    const lv_color_t c = color_;
+    const lv_color_t core = lv_color_mix(lv_color_hex(kMoon), c, 128);
+    for (float mid : {0.0f, 180.0f}) {                 // derecha e izquierda
+        float a1 = mid - span + 360, a2 = mid + span + 360;  // LVGL quiere ángulos positivos
+        Arc(layer, cx, cy, r, (6 + 6 * v) * s, a1, a2, c, Opa((30 + 50 * v) / 255.0f, opa));
+        Arc(layer, cx, cy, r, 2.4f * s, a1, a2, core, Opa((150 + 105 * v) / 255.0f, opa));
+        float o = mid == 0 ? sway : -sway, half = span * 0.55f;
+        Arc(layer, cx, cy, r + 9 * s, 1.4f * s, mid + o - half + 360, mid + o + half + 360, c,
+            Opa(0.45f, opa));
+    }
+}
+
+// Ondas de voz (tipo Siri): tres curvas que se cruzan donde va la boca. Su
+// alto sigue a la voz; en silencio quedan como una línea que respira.
+void ByteFaceRenderer::DrawWaves(lv_layer_t* layer, lv_opa_t opa) const {
+    struct Wave {
+        float freq, speed, height, width;
+        bool moon;
+        float alpha;
+    };
+    static const Wave kWaves[] = {
+        {1.5f, 0.0035f, 0.45f, 2.0f, false, 0.45f},  // la ancha de atrás, suave
+        {3.2f, -0.0047f, 0.65f, 2.0f, true, 0.70f},  // la de blanco luna
+        {2.2f, 0.0062f, 1.00f, 3.0f, false, 1.00f},  // la principal, del color de la cara
+    };
+    constexpr int kSegments = 16;
+    const float amp = 1.5f + 15 * voice_;  // en px del diseño
+    const float t = (float)now_;
+    for (const auto& w : kWaves) {
+        lv_color_t col = w.moon ? lv_color_hex(kMoon) : color_;
+        lv_opa_t o = Opa(w.alpha, opa);
+        float px = 0, py = 0;
+        for (int i = 0; i <= kSegments; i++) {
+            float u = -1 + 2.0f * i / kSegments;
+            float att = (1 - u * u) * (1 - u * u);  // los extremos quedan quietos
+            float x = X(120 + u * 48);
+            float y = Y(185 + w.height * amp * att * sinf(w.freq * kPi * u + t * w.speed));
+            if (i > 0) {
+                // Sin puntas redondas: con transparencia se verían bolitas en cada unión
+                Line(layer, px, py, x, y, w.width * scale_, col, o, false);
+            }
+            px = x;
+            py = y;
+        }
+    }
+}
+
+// Encendido tipo JARVIS. front = false se pinta detrás de los ojos y
+// front = true encima (el destello).
+void ByteFaceRenderer::DrawBoot(lv_layer_t* layer, bool front) const {
+    const float ms = boot_ms_, s = scale_;
+    const lv_color_t moon = lv_color_hex(kMoon);
+    const float cx = X(120), ey = Y(108);
+    const float eyes_x[2] = {X(120 - kGap / 2), X(120 + kGap / 2)};
+
+    if (front) {
+        // 3. Destello: un aro de neón que sale del centro y se apaga
+        float q = (ms - kBootEyesMs) / 800;
+        if (q > 0 && q < 1) {
+            float e = EaseOut(q);
+            float r = (44 + e * 130) * s;
+            Arc(layer, cx, Y(124), r, (10 - 5 * e) * s, 0, 360, moon, Opa(1 - q, 35));
+            Arc(layer, cx, Y(124), r, (3 - 1.5f * e) * s, 0, 360, moon, Opa(1 - q, 220));
+        }
+        return;
+    }
+
+    // 1. Línea de energía: nace en el centro y se estira a lo ancho
+    if (ms < kBootEyesMs) {
+        float k = EaseOut(std::min(1.0f, ms / kBootLineMs));
+        float fade = ms < kBootLineMs ? 1 : 1 - (ms - kBootLineMs) / (kBootEyesMs - kBootLineMs);
+        float half = k * 112 * s;
+        Line(layer, cx - half, ey, cx + half, ey, 12 * s, moon, Opa(fade, 30));
+        Line(layer, cx - half, ey, cx + half, ey, 5 * s, moon, Opa(fade, 80));
+        Line(layer, cx - half, ey, cx + half, ey, 1.8f * s, moon, Opa(fade, 255));
+        FillEllipse(layer, cx, ey, (3 + 3 * k) * s, (3 + 3 * k) * s, moon, Opa(fade, 255));
+    }
+    // 2. Dos chispas viajan a los ojos y dibujan un anillo alrededor de cada uno
+    if (ms >= kBootLineMs && ms < kBootAccMs) {
+        float q = std::min(1.0f, (ms - kBootLineMs) / (kBootEyesMs - kBootLineMs));
+        float e = EaseOut(q);
+        // Al encenderse los ojos el anillo se encoge hasta ellos y se apaga
+        float shrink = std::clamp((ms - kBootEyesMs) / (kBootAccMs - kBootEyesMs), 0.0f, 1.0f);
+        float r = (40 - 8 * shrink) * s;
+        lv_opa_t fade = Opa(1 - shrink, 255);
+        for (int i = 0; i < 2; i++) {
+            float x = Lerp(cx, eyes_x[i], e);
+            if (q < 1) {
+                FillEllipse(layer, x, ey, 4 * s, 4 * s, moon, LV_OPA_COVER);  // la chispa
+            }
+            float sweep = 360 * e;  // el anillo se cierra empezando arriba
+            float start = i == 0 ? 270 : 270 - sweep + 360;
+            if (sweep > 2) {
+                Arc(layer, eyes_x[i], ey, r, 9 * s, start, start + sweep, moon, Opa(1 - shrink, 45));
+                Arc(layer, eyes_x[i], ey, r, 2.2f * s, start, start + sweep, moon, fade);
+            }
+        }
     }
 }

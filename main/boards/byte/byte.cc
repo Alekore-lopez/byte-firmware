@@ -12,6 +12,7 @@
 #include "mcp_server.h"
 #include "adc_battery_monitor.h"
 #include "byte_hw_check.h"
+#include "byte_audio_level.h"
 
 #include <esp_log.h>
 #include <driver/i2c_master.h>
@@ -26,6 +27,26 @@
 #include "esp_lcd_ili9341.h"
 
 #define TAG "Byte"
+
+// El mismo codec de la placa, pero anotando qué tan fuerte suena el audio
+// que entra (micrófono) y el que sale (la voz de Byte) para las ondas y el halo.
+class ByteAudioCodec : public Es8311AudioCodec {
+public:
+    using Es8311AudioCodec::Es8311AudioCodec;
+
+    void OutputData(std::vector<int16_t>& data) override {
+        ByteAudioLevel::Speaker().Feed(data.data(), data.size(), output_channels());
+        Es8311AudioCodec::OutputData(data);
+    }
+
+    bool InputData(std::vector<int16_t>& data) override {
+        bool ok = Es8311AudioCodec::InputData(data);
+        if (ok) {
+            ByteAudioLevel::Mic().Feed(data.data(), data.size(), input_channels());
+        }
+        return ok;
+    }
+};
 
 class TouchDriver {
 public:
@@ -260,7 +281,7 @@ public:
     }
 
     virtual AudioCodec* GetAudioCodec() override {
-        static Es8311AudioCodec audio_codec(codec_i2c_bus_, AUDIO_CODEC_I2C_NUM,
+        static ByteAudioCodec audio_codec(codec_i2c_bus_, AUDIO_CODEC_I2C_NUM,
             AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE, AUDIO_I2S_GPIO_MCLK, AUDIO_I2S_GPIO_BCLK,
             AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN, AUDIO_CODEC_PA_PIN,
             AUDIO_CODEC_ES8311_ADDR, true, true);

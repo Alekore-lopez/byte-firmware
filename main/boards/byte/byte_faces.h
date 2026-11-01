@@ -17,9 +17,9 @@ enum EyeShape : uint8_t {
 // Accesorios alrededor de los ojos; se combinan con |
 enum : uint16_t {
     ACC_NONE       = 0,
-    ACC_RING       = 1 << 0,   // anillo que late (escuchando)
+    ACC_RING       = 1 << 0,   // halo que late con la voz (escuchando y hablando)
     ACC_DOTS       = 1 << 1,   // tres puntos (pensando)
-    ACC_MOUTH      = 1 << 2,   // barras de voz (hablando)
+    ACC_MOUTH      = 1 << 2,   // ondas de voz (hablando y escuchando)
     ACC_MOUTH_OPEN = 1 << 3,   // boca abierta (risa)
     ACC_O_MOUTH    = 1 << 4,   // boca en "o" (sorpresa)
     ACC_CHECK      = 1 << 5,   // visto bueno (éxito)
@@ -64,7 +64,7 @@ inline constexpr byte_face_t kByteFaces[] = {
     // --- Estados del sistema ---
     {"reposo",   0x3ee6b0, kEye, kEye, ACC_NONE, ANIM_BREATHE, true, true},
     {"escucha",  0xf2ede1, {EYE_RECT, 50, 70, 18, 0, 0, 0, 0}, {EYE_RECT, 50, 70, 18, 0, 0, 0, 0},
-                 ACC_RING, ANIM_LISTEN, true, false},
+                 ACC_RING | ACC_MOUTH, ANIM_LISTEN, true, false},
     {"pensando", 0xa78bfa, {EYE_RECT, 46, 44, 16, 12, -16, 0, 0}, {EYE_RECT, 46, 44, 16, 12, -16, 0, 0},
                  ACC_DOTS, ANIM_THINK, true, false},
     {"hablando", 0xffb238, {EYE_RECT, 46, 56, 16, 0, 0, 0, 0}, {EYE_RECT, 46, 56, 16, 0, 0, 0, 0},

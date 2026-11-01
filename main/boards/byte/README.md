@@ -55,6 +55,16 @@ Si dices "Byte" o tocas la pantalla en cualquier momento, deja todo, vuelve el b
 
 La barra de estado de arriba y los subtítulos de abajo siguen igual, porque ahí salen el código de activación y los datos del wifi.
 
+### Animaciones futuristas
+
+Todas se dibujan con código (arcos y líneas de LVGL), sin imágenes, para no gastar espacio.
+
+- **Encendido** (`DrawBoot`, 2,4 s): una línea de energía en blanco luna se estira, dos chispas van a los ojos y cierran un anillo alrededor de cada uno, los ojos se encienden de una rayita a su tamaño con un pitido (`popup.ogg`, que ya venía en el firmware) y sale un destello de neón. Luego los ojos pasan del blanco luna a su color.
+- **Ondas de voz** (`DrawWaves`, accesorio `ACC_MOUTH`): tres curvas tipo Siri donde va la boca. Al hablar siguen la voz de Byte y al escuchar el micrófono; en silencio quedan como una línea que respira.
+- **Halo reactivo** (`DrawHalo`, accesorio `ACC_RING`): dos arcos de reactor a los lados de la cara que se agrandan y brillan con la voz. Sale al escuchar y al hablar.
+
+El volumen lo mide `ByteAudioCodec` (en `byte.cc`), que es el codec ES8311 de siempre anotando en `byte_audio_level.h` qué tan fuerte suena cada bloque de audio (solo un número de 0 a 255, no guarda audio). Si las ondas se mueven poco o demasiado, ajusta los decibeles de `ByteAudioLevel::Mic()` y `Speaker()`.
+
 ## Autoprueba de hardware
 
 `byte_hw_check.*` revisa en unos milisegundos que cada pieza responda:

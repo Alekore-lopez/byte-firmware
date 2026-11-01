@@ -9,6 +9,7 @@
 #include "application.h"
 #include "assets/lang_config.h"
 #include "board.h"
+#include "byte_audio_level.h"
 
 #define TAG "ByteFace"
 
@@ -71,6 +72,7 @@ void ByteFaceDisplay::SetupUI() {
 
     uint32_t now = lv_tick_get();
     renderer_.Init(width_, height_, FindFace("reposo"), now);
+    renderer_.StartBoot(now);  // animación de encendido
     lv_obj_add_event_cb(face_, OnDraw, LV_EVENT_DRAW_MAIN, this);
     timer_ = lv_timer_create(OnTimer, kFrameMs, this);
 
@@ -276,6 +278,22 @@ void ByteFaceDisplay::OnTimer(lv_timer_t* timer) {
         ESP_LOGI(TAG, "Modo juego: %s -> %s", PhaseName(before), PhaseName(self->phase_));
     }
     self->UpdateIdleLife(now);
+
+    // Ondas y halo: al hablar siguen la voz de Byte; al escuchar, el micrófono
+    DeviceState state = Application::GetInstance().GetDeviceState();
+    float level = 0;
+    if (state == kDeviceStateSpeaking) {
+        level = ByteAudioLevel::Speaker().Level();
+    } else if (state == kDeviceStateListening) {
+        level = ByteAudioLevel::Mic().Level();
+    }
+    self->renderer_.SetVoiceLevel(level);
+
+    // Pitido del encendido, justo cuando se prenden los ojos
+    if (self->renderer_.TakeBootBeep()) {
+        auto& app = Application::GetInstance();
+        app.Schedule([&app] { app.PlaySound(Lang::Sounds::OGG_POPUP); });
+    }
 
     lv_area_t dirty;
     if (self->renderer_.Update(now, &dirty)) {

@@ -150,6 +150,8 @@ html,body{background:#000;margin:0;height:100%;overflow:hidden}
           <label class="row">Batería <input type="range" id="bat" min="0" max="100" value="85"></label>
           <label class="row">Cargando por USB-C <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="charge"></span></label>
           <div class="row">Modo juego: saltar a <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="go45" type="button">45 s</button><button class="btn" id="go3" type="button">3 min</button><button class="btn" id="go4" type="button">4 min</button></span></div>
+          <div class="row">Animaciones nuevas <span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="bootAgain" type="button">Ver encendido</button></span></div>
+          <label class="row">Ondas con mi micrófono <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="micWaves"></span></label>
           <label class="row">Probar con botones físicos <span class="switch" style="border:0;padding:0;background:none"><input type="checkbox" id="physical"></span></label>
         </div>
       </section>
@@ -204,7 +206,7 @@ html,body{background:#000;margin:0;height:100%;overflow:hidden}
 const DEF = { shape: 'rect', w: 46, h: 62, r: 16, dx: 0, dy: 0, lidTop: 0, lidBot: 0 };
 const FACES = [
   { id: 'reposo', name: 'Reposo', color: '#3ee6b0', anim: 'breathe', gaze: 1 },
-  { id: 'escucha', name: 'Escucha', color: '#f2ede1', eye: { w: 50, h: 70, r: 18 }, acc: ['ring'], anim: 'listen' },
+  { id: 'escucha', name: 'Escucha', color: '#f2ede1', eye: { w: 50, h: 70, r: 18 }, acc: ['ring', 'mouth'], anim: 'listen' },
   { id: 'pensando', name: 'Pensando', color: '#a78bfa', eye: { h: 44, dx: 12, dy: -16 }, acc: ['dots'], anim: 'think' },
   { id: 'hablando', name: 'Hablando', color: '#ffb238', eye: { h: 56 }, acc: ['mouth'], anim: 'talk', gaze: 1 },
   { id: 'dormido', name: 'Dormido', color: '#6366f1', eye: { shape: 'closed' }, acc: ['zzz'], anim: 'sleep', blink: 0 },
@@ -262,9 +264,8 @@ function drawEye(c, cx, cy, e, side, blink, beat, lid = 0) {
 }
 function drawAcc(c, a, t, col, alpha, gap) {
   c.save(); c.globalAlpha *= alpha; c.fillStyle = col; c.strokeStyle = col; c.lineCap = 'round';
-  if (a === 'ring') { const p = (t % 1400) / 1400; c.lineWidth = 3; c.globalAlpha *= .55 * (1 - p); c.beginPath(); c.arc(120, CY + 6, 88 + p * 24, 0, Math.PI * 2); c.stroke(); }
   if (a === 'dots') { for (let i = 0; i < 3; i++) { const b = Math.max(0, Math.sin(t / 180 - i * .9)); c.globalAlpha = alpha * (.35 + .65 * b); c.beginPath(); c.arc(100 + i * 20, 186 - b * 6, 6, 0, Math.PI * 2); c.fill(); } }
-  if (a === 'mouth') { const hs = [.6, 1, .8, 1, .6]; for (let i = 0; i < 5; i++) { const v = .25 + .75 * Math.abs(Math.sin(t / (110 + i * 23) + i * 1.7)) * hs[i]; const h = 6 + 22 * v; rrc(c, 93 + i * 12 - 3, 184 - h / 2, 7, h, 3.5); c.fill(); } }
+  if (a === 'mouth') drawWaves(c, t, col);
   if (a === 'mouthOpen') { const o = 1 + .08 * Math.sin(t / 70); c.beginPath(); c.arc(120, 176, 22 * o, 0, Math.PI); c.fill(); }
   if (a === 'oMouth') { c.lineWidth = 6; c.beginPath(); c.ellipse(120, 186, 10, 12, 0, 0, Math.PI * 2); c.stroke(); }
   if (a === 'check') { c.lineWidth = 7; c.beginPath(); c.moveTo(106, 186); c.lineTo(116, 196); c.lineTo(136, 174); c.stroke(); }
@@ -275,6 +276,97 @@ function drawAcc(c, a, t, col, alpha, gap) {
   if (a === 'tear') { const p = (t % 1800) / 1800; c.globalAlpha = alpha * (1 - p * .7); c.fillStyle = '#93c5fd'; drop(c, 120 - gap / 2 - 14, CY + 40 + p * 50, 7); }
   if (a === 'sweat') { c.fillStyle = '#7dd3fc'; drop(c, 120 + gap / 2 + 34, CY - 44 + Math.sin(t / 400) * 3, 8); }
   c.restore();
+}
+/* ---------- Animaciones futuristas (igual que el firmware) ----------
+   VOICE: qué tan fuerte suena la voz (0..1). Al hablar es la voz de Byte y al
+   escuchar el micrófono. En la placa lo mide el codec (byte_audio_level.h). */
+const MOON = '#f2ede1', MOON_RGB = [242, 237, 225];
+let VOICE = 0;
+// Halo (DrawHalo): dos arcos de reactor a los lados que laten con la voz
+function drawHalo(c, t, col, alpha) {
+  if (alpha <= 0) return;
+  const v = VOICE, r = 92 + v * 9, span = (36 + 22 * v) * Math.PI / 180, sway = 8 * Math.sin(t / 900) * Math.PI / 180;
+  const rgb = col.match(/\d+/g).map(Number), core = `rgb(${rgb.map((x, i) => Math.round((x + MOON_RGB[i]) / 2))})`;
+  c.save(); c.lineCap = 'round';
+  [0, Math.PI].forEach(mid => {
+    const arc = (rad, w, a1, a2, color, o) => { c.globalAlpha = alpha * o; c.strokeStyle = color; c.lineWidth = w; c.beginPath(); c.arc(120, 132, rad, a1, a2); c.stroke(); };
+    arc(r, 6 + 6 * v, mid - span, mid + span, col, (30 + 50 * v) / 255);
+    arc(r, 2.4, mid - span, mid + span, core, (150 + 105 * v) / 255);
+    const o = mid === 0 ? sway : -sway, half = span * .55;
+    arc(r + 9, 1.4, mid + o - half, mid + o + half, col, .45);
+  });
+  c.restore();
+}
+// Ondas de voz (DrawWaves): tres curvas tipo Siri donde va la boca
+const WAVES = [{ f: 1.5, sp: .0035, h: .45, w: 2, moon: 0, a: .45 }, { f: 3.2, sp: -.0047, h: .65, w: 2, moon: 1, a: .7 }, { f: 2.2, sp: .0062, h: 1, w: 3, moon: 0, a: 1 }];
+function drawWaves(c, t, col) {
+  const amp = 1.5 + 15 * VOICE, base = c.globalAlpha;
+  WAVES.forEach(w => {
+    c.globalAlpha = base * w.a; c.strokeStyle = w.moon ? MOON : col; c.lineWidth = w.w; c.lineJoin = 'round'; c.beginPath();
+    for (let i = 0; i <= 16; i++) { const u = -1 + 2 * i / 16, att = (1 - u * u) ** 2, x = 120 + u * 48, y = 185 + w.h * amp * att * Math.sin(w.f * Math.PI * u + t * w.sp); i ? c.lineTo(x, y) : c.moveTo(x, y); }
+    c.stroke();
+  });
+  c.globalAlpha = base;
+}
+// Encendido tipo JARVIS (DrawBoot): ms = tiempo desde que se prendió
+const BOOT_MS = 2400;
+function drawBoot(c, ms, front) {
+  const ease = k => 1 - Math.pow(1 - k, 3), clamp = k => Math.max(0, Math.min(1, k));
+  c.save(); c.strokeStyle = MOON; c.fillStyle = MOON; c.lineCap = 'round';
+  const line = (x1, x2, y, w, o) => { c.globalAlpha = o; c.lineWidth = w; c.beginPath(); c.moveTo(x1, y); c.lineTo(x2, y); c.stroke(); };
+  const ring = (x, y, r, w, a1, a2, o) => { c.globalAlpha = o; c.lineWidth = w; c.beginPath(); c.arc(x, y, r, a1, a2); c.stroke(); };
+  if (front) {
+    const q = (ms - 1000) / 800;   // 3. destello: un aro de neón que sale del centro
+    if (q > 0 && q < 1) { const e = ease(q), r = 44 + e * 130; ring(120, 124, r, 10 - 5 * e, 0, 7, (1 - q) * 35 / 255); ring(120, 124, r, 3 - 1.5 * e, 0, 7, (1 - q) * 220 / 255); }
+    c.restore(); return;
+  }
+  if (ms < 1000) {   // 1. línea de energía que se estira desde el centro
+    const k = ease(Math.min(1, ms / 450)), fade = ms < 450 ? 1 : 1 - (ms - 450) / 550, half = k * 112;
+    line(120 - half, 120 + half, 108, 12, fade * 30 / 255); line(120 - half, 120 + half, 108, 5, fade * 80 / 255); line(120 - half, 120 + half, 108, 1.8, fade);
+    c.globalAlpha = fade; c.beginPath(); c.arc(120, 108, 3 + 3 * k, 0, 7); c.fill();
+  }
+  if (ms >= 450 && ms < 1600) {   // 2. dos chispas van a los ojos y cierran un anillo en cada uno
+    const q = Math.min(1, (ms - 450) / 550), e = ease(q), shrink = clamp((ms - 1000) / 600), r = 40 - 8 * shrink;
+    [-1, 1].forEach(side => {
+      const ex = 120 + side * 44, x = 120 + (ex - 120) * e, sweep = Math.PI * 2 * e, top = -Math.PI / 2;
+      if (q < 1) { c.globalAlpha = 1; c.beginPath(); c.arc(x, 108, 4, 0, 7); c.fill(); }
+      const [a1, a2] = side < 0 ? [top, top + sweep] : [top - sweep, top];
+      ring(ex, 108, r, 9, a1, a2, (1 - shrink) * 45 / 255); ring(ex, 108, r, 2.2, a1, a2, 1 - shrink);
+    });
+  }
+  c.restore();
+}
+// Nivel de la voz: micrófono de verdad si lo activas; si no, uno simulado
+const mic = { on: false, an: null, buf: null };
+async function micToggle(on) {
+  if (!on) { mic.on = false; log('Ondas: micrófono apagado (nivel simulado)'); return; }
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mic.an = ac.createAnalyser(); mic.an.fftSize = 512; mic.buf = new Float32Array(mic.an.fftSize);
+    ac.createMediaStreamSource(stream).connect(mic.an); mic.on = true; ac.resume?.();
+    log('[función nueva] Ondas y halo siguen tu micrófono mientras Byte escucha', true);
+  } catch (e) { $('micWaves').checked = false; toast('No pude usar el micrófono'); log('Ondas: el navegador no dio permiso al micrófono'); }
+}
+function rawVoice(now) {
+  if (S.dev === 'listening') {
+    if (mic.on && mic.an) {
+      mic.an.getFloatTimeDomainData(mic.buf); let peak = 0; for (const x of mic.buf) peak = Math.max(peak, Math.abs(x));
+      const db = peak > 0 ? 20 * Math.log10(peak) : -96; return Math.max(0, Math.min(1, (db + 52) / 36));   // igual que ByteAudioLevel::Mic()
+    }
+    return .12 + .3 * Math.abs(Math.sin(now / 260) * Math.sin(now / 97));
+  }
+  if (S.dev === 'speaking') {   // sílabas y pausas cortas entre palabras, como una voz
+    const word = Math.sin(now / 430) > -.55 ? 1 : .08;
+    return word * (.35 + .55 * Math.abs(Math.sin(now / 95) * Math.sin(now / 53 + 1)));
+  }
+  return 0;
+}
+function voiceTick(now) { const v = rawVoice(now); VOICE += (v - VOICE) * (v > VOICE ? .55 : .14); if (VOICE < .005) VOICE = 0; }
+function effAcc(f) {   // igual que EffectiveAcc(): al hablar, halo y ondas en cualquier cara
+  let acc = [...(f.acc || [])];
+  if (S.dev === 'speaking' && S.screen !== 'faces') { if (!acc.includes('ring')) acc.push('ring'); if (!acc.some(a => ['mouth', 'mouthOpen', 'oMouth'].includes(a))) acc.push('mouth'); }
+  return acc;
 }
 function animOf(n, t) {
   const o = { dx: 0, dy: 0, s: 1, beat: 1 };
@@ -338,7 +430,7 @@ let nextBlink = 1500, blinkT = -1, gazeT = 0, gazeTo = [0, 0], tourOn = false, t
 function setFace(id) {
   const f = byId[id]; if (!f) return;
   from = { L: { ...st.L }, R: { ...st.R }, col: [...st.col] };
-  st.accOut = (st.face.acc || []).filter(a => !(f.acc || []).includes(a));
+  st.accOut = effAcc(st.face).filter(a => !effAcc(f).includes(a));
   target = snap(f); t0 = performance.now(); st.k = 0; st.face = f;
   
 }
@@ -354,22 +446,32 @@ function drawFace(now) {
   st.gx += (gazeTo[0] - st.gx) * .18; st.gy += (gazeTo[1] - st.gy) * .18;
   if (tourOn && now > tourT) { const i = (FACES.indexOf(target.face) + 1) % FACES.length; setFace(FACES[i].id); tourT = now + 2600; }
 
-  const f = target.face, a = animOf(f.anim, now), css = `rgb(${st.col.map(Math.round)})`, p = computePlay(now);
+  const boot = S.power === 'boot' ? now - S.bootT : -1;
+  voiceTick(now);
+  // Encendido: los ojos nacen en blanco luna y pasan a su color
+  const moonK = boot < 0 ? 0 : 1 - Math.max(0, Math.min(1, (boot - 1500) / 700));
+  const f = target.face, a = animOf(f.anim, now), css = `rgb(${st.col.map((x, i) => Math.round(lerp(x, MOON_RGB[i], moonK)))})`, p = computePlay(now);
+  const accIn = boot >= 0 && boot < 1600 ? [] : effAcc(f), accOut = boot >= 0 ? [] : st.accOut;
   fc.setTransform(K, 0, 0, K, 0, 0); fc.globalAlpha = 1; fc.fillStyle = BG; fc.fillRect(0, 0, 320, 240);
   // Igual que el firmware: centro x=160, ojos en y≈77, escala 1,25
   const SC = 1.25; fc.setTransform(SC * K, 0, 0, SC * K, (160 - 120 * SC) * K, (FACE_Y - 108 * SC) * K);
+  if (accOut.includes('ring')) drawHalo(fc, now, css, 1 - st.k);   // el halo va detrás de los ojos
+  if (accIn.includes('ring')) drawHalo(fc, now, css, st.k);
+  if (boot >= 0) drawBoot(fc, boot, false);
+  const grow = boot < 0 ? 1 : 1 - Math.pow(1 - Math.max(0, Math.min(1, (boot - 1000) / 450)), 3);
   fc.save(); fc.translate(120 + a.dx, CY + a.dy); fc.scale(a.s, a.s); fc.translate(-120, -CY);
-  const blink = f.blink !== 0 ? st.blink : 1;
-  ['L', 'R'].forEach((side, i) => {
-    const e = { ...st[side], w: st[side].w * p.sx[i], h: st[side].h * p.sy[i] };
+  const blink = f.blink !== 0 && boot < 0 ? st.blink : 1;
+  if (boot < 0 || boot >= 1000) ['L', 'R'].forEach((side, i) => {
+    const e = { ...st[side], w: st[side].w * p.sx[i], h: Math.max(4, st[side].h * p.sy[i] * grow) };
     const cx = 120 + (side === 'L' ? -1 : 1) * 44 + e.dx + st.gx + p.dx[i];
     const cy = CY + e.dy + st.gy + p.dy[i] + play.sleepy * 4;   // con sueño mira un poco hacia abajo
     fc.fillStyle = css; drawEye(fc, cx, cy, e, side, blink, a.beat, p.lid);
   });
   fc.restore();
-  st.accOut.forEach(x => drawAcc(fc, x, now, css, 1 - st.k, 88));
-  (f.acc || []).forEach(x => drawAcc(fc, x, now, css, st.k, 88));
+  accOut.forEach(x => drawAcc(fc, x, now, css, 1 - st.k, 88));
+  accIn.forEach(x => drawAcc(fc, x, now, css, st.k, 88));
   drawPlay(fc, p, css);
+  if (boot >= 0) drawBoot(fc, boot, true);
   fc.setTransform(K, 0, 0, K, 0, 0);
 }
 
@@ -412,7 +514,7 @@ function setDev(d) { if (S.dev === d) return; S.dev = d; if (STATE_NAME[d]) log(
 /* ---------- Sonido (Web Audio) y voz ---------- */
 let ac = null;
 function beep(freqs, dur = .09, gap = .02, force) {
-  if (S.power !== 'on' || (S.dnd && !force)) return;
+  if (S.power === 'off' || (S.dnd && !force)) return;
   try {
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     let t = ac.currentTime;
@@ -665,7 +767,7 @@ function setMuted(m) { S.muted = m; log(m ? '[función nueva] Micrófono apagado
 function setDnd(d) { S.dnd = d; log(d ? '[función nueva] No molestar: sin sonidos de aviso' : '[función nueva] No molestar desactivado', true); }
 function setWifi(w) { S.wifi = w; $('wifi').checked = w; if (!w) { log('WifiBoard: sin conexión → modo de configuración'); toast('Sin Wi-Fi'); } else { setDev('connecting'); setTimeout(() => { setDev('idle'); toast('Conectado'); beep([660, 990]); }, 1400); } }
 function applyBrightness() {
-  const b = S.power !== 'on' ? 0 : S.sleeping ? Math.min(S.brightness, 15) : S.brightness;
+  const b = S.power === 'off' ? 0 : S.sleeping ? Math.min(S.brightness, 15) : S.brightness;
   canvas.style.filter = `brightness(${(.25 + .75 * b / 100).toFixed(2)})`;
   canvas.style.opacity = S.power === 'off' ? 0 : 1;
 }
@@ -710,7 +812,9 @@ function tapFace() {
 /* ---------- Encendido ---------- */
 function powerOn() {
   S.power = 'boot'; S.bootT = performance.now(); S.screen = 'home'; S.qp = S.qpTo = 0; S.sleeping = false; applyBrightness();
-  log('Encendido: arranca el firmware'); setTimeout(() => { if (S.power !== 'boot') return; S.power = 'on'; applyBrightness(); setDev('connecting'); setTimeout(() => { if (S.power !== 'on') return; setDev('idle'); if (S.wifi) beep([660, 990]); else log('WifiBoard: sin conexión → modo de configuración'); }, 1500); }, 1600);
+  log('[función nueva] Encendido tipo JARVIS: línea de energía → anillos → ojos → destello', true); setDev('connecting');
+  setTimeout(() => { if (S.power === 'boot') beep([880, 1320], .06); }, 1000);   // pitido cuando se encienden los ojos
+  setTimeout(() => { if (S.power !== 'boot') return; S.power = 'on'; applyBrightness(); setTimeout(() => { if (S.power !== 'on') return; setDev('idle'); if (S.wifi) beep([660, 990]); else log('WifiBoard: sin conexión → modo de configuración'); }, 700); }, BOOT_MS);
 }
 function powerOff(why) {
   try { speechSynthesis.cancel(); } catch (e) {}
@@ -734,6 +838,9 @@ $('charge').onchange = e => { S.charging = e.target.checked; if (S.power === 'on
   if (S.power !== 'on') return; S.screen = 'home'; S.qpTo = 0; S.expr = null;
   S.idleOffset = ms - (performance.now() - S.lastTouch) + 50; log(`Saltamos a ${ms >= 60000 ? ms / 60000 + ' min' : ms / 1000 + ' s'} sin hablarle`);
 });
+
+$('bootAgain').onclick = () => { try { speechSynthesis.cancel(); } catch (e) {} busy = false; S.dev = 'idle'; $('power').checked = true; powerOn(); };
+$('micWaves').onchange = e => micToggle(e.target.checked);
 
 /* ---------- Conversación: palabra "Byte" → escucha → piensa → habla ---------- */
 const CHIPS = ['¿Qué hora es?', 'Cuéntame un chiste', 'Sube el volumen', 'Pon un temporizador de 2 minutos', 'Baja el brillo', '¿Cómo estás?', 'Buenas noches'];
@@ -835,8 +942,8 @@ function frame(now) {
   ctx.setTransform(K, 0, 0, K, 0, 0);
   if (S.power === 'off') { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240); return; }
   if (S.power === 'boot') {
-    const p = (now - S.bootT) / 1600; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240);
-    ctx.globalAlpha = Math.sin(Math.min(1, p) * Math.PI); ctx.font = `800 46px "Baloo 2", ${FONT}`; ctx.fillStyle = C.accent; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Byte', 160, 116); ctx.globalAlpha = 1; return;
+    if (shownFace !== 'pensando') { shownFace = 'pensando'; setFace('pensando'); }
+    drawFace(now); ctx.setTransform(K, 0, 0, K, 0, 0); statusBar(now); return;
   }
   // temporizador
   const t = S.timer;
@@ -928,7 +1035,7 @@ function liveConnect() {
 if (live.enabled) liveConnect();
 
 log('Simulador listo. Byte arranca en reposo.');
-if (!live.enabled) { setDev('connecting'); setTimeout(() => setDev('idle'), 1200); }
+powerOn();   // al abrir la página se ve el encendido
 applyBrightness(); requestAnimationFrame(frame);
 </script>
 </html>
