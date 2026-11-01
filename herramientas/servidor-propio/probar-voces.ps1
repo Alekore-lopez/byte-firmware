@@ -151,7 +151,7 @@ if ($ini -lt 0) {
   # No hay bloque EdgeTTS: lo creamos debajo de la seccion TTS: (sin sangria)
   $tts = -1
   for ($i = 0; $i -lt $lineas.Count; $i++) { if ($lineas[$i] -match '^TTS\s*:\s*(#.*)?$') { $tts = $i; break } }
-  $nuevo = @("  EdgeTTS:", "    type: edge", "    voice: $($elegida.voz)", "    pitch: $pitch", "    rate: $rate", "    output_dir: tmp/")
+  $nuevo = @("  EdgeTTS:", "    type: edge", "    voice: $($elegida.voz)", "    pitch: $pitch", "    rate: $rate", "    language: `"Spanish`"", "    output_dir: tmp/")
   if ($tts -lt 0) { $lineas.Add("TTS:"); $lineas.AddRange([string[]]$nuevo) }
   else { $lineas.InsertRange($tts + 1, [string[]]$nuevo) }
   Write-Host "No habia bloque EdgeTTS: lo agregue." -ForegroundColor Yellow
@@ -163,7 +163,8 @@ if ($ini -lt 0) {
   for ($k = $ini + 1; $k -lt $fin; $k++) {
     if ($lineas[$k].Trim() -ne "" -and -not $lineas[$k].Trim().StartsWith("#")) { $hijo = " " * (Sangria $lineas[$k]); break }
   }
-  foreach ($par in @(@("voice", $elegida.voz), @("pitch", $pitch), @("rate", $rate))) {
+  # language: la central le dice a Gemini que responda en ese idioma; si falta, usa chino
+  foreach ($par in @(@("voice", $elegida.voz), @("pitch", $pitch), @("rate", $rate), @("language", '"Spanish"'))) {
     $hecho = $false
     for ($k = $ini + 1; $k -lt $fin; $k++) {
       if ($lineas[$k] -match ('^\s*' + $par[0] + '\s*:')) { $lineas[$k] = "$hijo$($par[0]): $($par[1])"; $hecho = $true; break }
