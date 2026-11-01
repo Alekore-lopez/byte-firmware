@@ -135,3 +135,7 @@ input[type=checkbox]{accent-color:var(--neon);width:16px;height:16px}
 ::-webkit-scrollbar-thumb{background:rgba(242,237,225,.12);border-radius:4px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(242,237,225,.22)}
 ::-webkit-scrollbar-track{background:transparent}
+
+/* Botón "Ver la cara de Byte" (abre la pantalla de Byte en su propia ventana) */
+.ver-cara{margin:0 6px 14px;padding:8px 12px;border-radius:10px;border:1px solid rgba(242,237,225,.18);background:rgba(242,237,225,.06);color:inherit;font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.ver-cara:hover{background:rgba(242,237,225,.12)}

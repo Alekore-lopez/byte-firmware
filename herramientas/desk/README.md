@@ -77,6 +77,13 @@ La central **se queda en el HP**; la Mac solo se conecta a ella por el WiFi de l
    La IP la ves en el HP con el ícono **Revisar Byte** o con `ipconfig` → "Dirección IPv4".
 5. Byte queda arriba en la barra de menú. **Clic** = panel de vidrio · atajo **⌥ Opción + Espacio**.
 
+6. **Ver la cara de Byte**: botón **Ver la cara de Byte** (arriba a la izquierda) o clic derecho en Byte en la barra → **Ver la cara de Byte**. Es la misma pantalla del PC y la placa, en su propia ventana: piensa, habla y cambia de emoción con cada respuesta.
+7. **Acceso directo (sin Terminal)**, una sola vez:
+   ```bash
+   bash ~/byte-firmware/herramientas/desk/mac/crear-acceso-directo.sh
+   ```
+   Crea **Byte Desk** en Aplicaciones con el ícono de Byte (Cmd + Espacio → "Byte Desk"). Si Electron quedó a medias (pasa con Node.js muy nuevo: *"Electron failed to install correctly"*), el script lo arregla solo.
+
 Para actualizar después: `cd ~/byte-firmware && git pull && cd herramientas/desk && npm install && npm start`.
 
 ### Si la Mac no se conecta al HP

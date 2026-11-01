@@ -12,7 +12,8 @@
     "test": "node --test \"test/*.test.js\"",
     "central-falsa": "node test/central-falsa.js",
     "dist:win": "electron-builder --win nsis --publish never",
-    "dist:mac": "electron-builder --mac dmg --arm64 --publish never"
+    "dist:mac": "electron-builder --mac dmg --arm64 --publish never",
+    "acceso-directo-mac": "bash mac/crear-acceso-directo.sh"
   },
   "dependencies": {
     "ws": "8.18.0"
@@ -49,7 +50,13 @@
       "createStartMenuShortcut": true,
       "runAfterFinish": true
     },
-    "artifactName": "Byte-Desk-${version}-${os}-${arch}.${ext}"
+    "artifactName": "Byte-Desk-${version}-${os}-${arch}.${ext}",
+    "extraResources": [
+      {
+        "from": "../pc/byte_pantalla.html",
+        "to": "cara/byte_pantalla.html"
+      }
+    ]
   },
   "repository": {
     "type": "git",

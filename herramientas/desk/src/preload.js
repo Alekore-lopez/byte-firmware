@@ -48,4 +48,5 @@ contextBridge.exposeInMainWorld('byte', {
   // Ventanas
   abrirVentana: (seccion) => ipcRenderer.invoke('ventana:abrir', seccion),
   cerrarPanel: () => ipcRenderer.invoke('ventana:cerrar-panel'),
+  abrirCara: () => ipcRenderer.invoke('ventana:cara'),
 });
