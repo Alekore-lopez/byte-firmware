@@ -94,6 +94,15 @@ if (Test-Path $bat) {
   Ok "Central lista. Enciende la placa de Byte y te contestara."
 }
 
+# Byte Desk (si ya lo instalaste): queda en la barra, junto al reloj
+$desk = Join-Path $HOME "byte-firmware\herramientas\desk"
+$electron = Join-Path $desk "node_modules\electron\dist\electron.exe"
+if (Test-Path $electron) {
+  # --oculto: arranca en la barra sin abrir la ventana. Si ya estaba abierto, no se duplica.
+  Start-Process -FilePath $electron -ArgumentList "`"$desk`" --oculto" -WorkingDirectory $desk
+  Ok "Byte Desk activo en la barra (junto al reloj)."
+}
+
 Write-Host ""
 Write-Host "  ==== Byte encendido. Dile 'Oye Byte' ====" -ForegroundColor White
 Start-Sleep -Seconds 4

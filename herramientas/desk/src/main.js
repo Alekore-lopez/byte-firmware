@@ -31,7 +31,8 @@ let saliendo = false;
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => mostrarVentana());
+  // Si el botón "Byte" la abre otra vez con --oculto, no mostramos la ventana.
+  app.on('second-instance', (_e, argv) => { if (!argv.includes('--oculto')) mostrarVentana(); });
 }
 
 // ---------- Ventanas ----------
@@ -192,7 +193,10 @@ function menuBandeja() {
 function aplicarInicio(activo) {
   ajustes.set('abrirAlIniciar', Boolean(activo));
   // En Linux (desarrollo) esto no hace nada; en Windows y Mac sí.
-  app.setLoginItemSettings({ openAtLogin: Boolean(activo), args: ['--oculto'], openAsHidden: true });
+  // Si la app corre con `npm start` (no instalada), Electron necesita saber
+  // también la carpeta de Byte Desk; si no, abriría un Electron vacío.
+  const args = app.isPackaged ? ['--oculto'] : [app.getAppPath(), '--oculto'];
+  app.setLoginItemSettings({ openAtLogin: Boolean(activo), path: process.execPath, args, openAsHidden: true });
 }
 
 // ---------- Central ----------
