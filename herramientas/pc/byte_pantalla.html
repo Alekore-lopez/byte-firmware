@@ -841,6 +841,12 @@ $('charge').onchange = e => { S.charging = e.target.checked; if (S.power === 'on
 
 $('bootAgain').onclick = () => { try { speechSynthesis.cancel(); } catch (e) {} busy = false; S.dev = 'idle'; $('power').checked = true; powerOn(); };
 $('micWaves').onchange = e => micToggle(e.target.checked);
+// Atajos (útiles en la vista de solo pantalla): E = ver encendido, H = conversación de prueba
+addEventListener('keydown', e => {
+  if (e.target.closest?.('input, textarea')) return;
+  if (e.key === 'e' || e.key === 'E') $('bootAgain').click();
+  if ((e.key === 'h' || e.key === 'H') && !live.on) talk(CHIPS[Math.floor(Math.random() * CHIPS.length)]);
+});
 
 /* ---------- Conversación: palabra "Byte" → escucha → piensa → habla ---------- */
 const CHIPS = ['¿Qué hora es?', 'Cuéntame un chiste', 'Sube el volumen', 'Pon un temporizador de 2 minutos', 'Baja el brillo', '¿Cómo estás?', 'Buenas noches'];
