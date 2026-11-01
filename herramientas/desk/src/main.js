@@ -80,6 +80,12 @@ function crearVentana() {
   }
 
   ventana = new BrowserWindow(opciones);
+  // Mac: Byte vive arriba en la barra de menú (junto al WiFi). El ícono del Dock
+  // solo aparece mientras la ventana grande está abierta, como las apps de la barra.
+  if (ES_MAC && app.dock) {
+    ventana.on('show', () => app.dock.show());
+    ventana.on('hide', () => { if (!cara || cara.isDestroyed() || !cara.isVisible()) app.dock.hide(); });
+  }
   ventana.loadFile(path.join(RAIZ, 'renderer', 'index.html'));
   ventana.once('ready-to-show', () => {
     // Si arrancó con el computador, empieza escondido en la barra.
@@ -144,7 +150,10 @@ function mostrarCara() {
   cara.setAspectRatio(4 / 3);
   cara.loadFile(rutaCara());
   protegerNavegacion(cara);
-  cara.on('closed', () => { cara = null; });
+  cara.on('closed', () => {
+    cara = null;
+    if (ES_MAC && app.dock && ventana && !ventana.isVisible()) app.dock.hide();
+  });
 }
 
 /** La interfaz nunca navega a otras páginas; los enlaces se abren en el navegador. */
@@ -375,7 +384,10 @@ function registrarPeticiones() {
 app.whenReady().then(() => {
   ajustes = new Ajustes(app.getPath('userData'));
   // Mac: con `npm start` el Dock mostraría el ícono de Electron; ponemos el de Byte.
-  if (ES_MAC && app.dock) app.dock.setIcon(path.join(RAIZ, 'assets', 'icono.png'));
+  if (ES_MAC && app.dock) {
+    app.dock.setIcon(path.join(RAIZ, 'assets', 'icono.png'));
+    if (process.argv.includes('--oculto')) app.dock.hide();
+  }
   registrarPeticiones();
   crearVentana();
   crearPanel();
