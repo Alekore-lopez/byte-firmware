@@ -1,0 +1,137 @@
+/* estilos.css — Look de Byte Desk: noche, Blanco luna y resplandor neón.
+   body.mac  → vidrio esmerilado (la ventana deja ver el escritorio borroso)
+   body.win  → oscuro y sobrio con barra de título propia */
+:root{
+  --noche:#07070b; --carbon:#111117; --grafito:#1b1b23;
+  --luna:#f2ede1; --luna-2:#b3aea3;
+  --neon:#9ff7e4; --ambar:#ffc66b; --rojo:#ff8b8b;
+  --linea:rgba(242,237,225,.08); --velo:rgba(242,237,225,.05);
+  --f-texto:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --f-marca:"SF Pro Rounded",-apple-system,"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --f-mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --emo:var(--neon);  /* color de la emoción actual de Byte */
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:14px/1.5 var(--f-texto);color:var(--luna);background:var(--noche);overflow:hidden;-webkit-font-smoothing:antialiased;user-select:none}
+body.mac{background:rgba(10,10,14,.55)}
+input,textarea,.msg{user-select:text}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+
+/* ---------- Carita de Byte con ojos Eclipse ---------- */
+.byte{--s:44px;width:var(--s);height:calc(var(--s)*.8);border-radius:calc(var(--s)*.32);background:#020204;border:1px solid rgba(242,237,225,.18);display:flex;align-items:center;justify-content:center;gap:calc(var(--s)*.17);flex:none;box-shadow:0 0 calc(var(--s)*.45) color-mix(in srgb,var(--emo) 28%,transparent);transition:box-shadow .4s}
+.ojo{width:calc(var(--s)*.2);height:calc(var(--s)*.2);border-radius:50%;position:relative;background:radial-gradient(circle,#fff 0 35%,var(--emo) 52%,transparent 72%);animation:corona 2.6s ease-in-out infinite}
+.ojo::after{content:"";position:absolute;inset:14%;border-radius:50%;background:#020204;transform:translateX(var(--m,0));transition:transform .5s}
+.byte[data-estado="pensando"] .ojo{animation-duration:.9s}
+.byte[data-estado="pensando"] .ojo::after{--m:38%;animation:mirar 1.6s ease-in-out infinite}
+.byte[data-estado="hablando"] .ojo{animation:corona .5s ease-in-out infinite}
+.byte[data-estado="desconectado"]{--emo:#5d5a66}
+.byte[data-estado="desconectado"] .ojo{animation:none;height:calc(var(--s)*.05);border-radius:4px;background:var(--emo)}
+.byte[data-estado="desconectado"] .ojo::after{display:none}
+.byte.grande{--s:120px}
+@keyframes corona{50%{filter:brightness(1.4) drop-shadow(0 0 5px var(--emo))}}
+@keyframes mirar{0%,100%{transform:translateX(38%)}50%{transform:translateX(-38%)}}
+
+/* ---------- Esqueleto de la ventana ---------- */
+.app{display:grid;grid-template-columns:224px minmax(0,1fr);height:100%}
+.lateral{display:flex;flex-direction:column;gap:3px;padding:16px 12px;border-right:1px solid var(--linea);-webkit-app-region:drag}
+body.mac .lateral{padding-top:52px;background:rgba(255,255,255,.025)}
+body.win .lateral{padding-top:44px;background:#0d0d12}
+.lateral button,.lateral .perfil{-webkit-app-region:no-drag}
+.perfil{display:flex;align-items:center;gap:12px;padding:4px 6px 16px}
+.perfil b{font:600 16px var(--f-marca);display:block;letter-spacing:.01em}
+.estado{font:500 11px var(--f-mono);color:var(--luna-2);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.estado::before{content:"";width:7px;height:7px;border-radius:50%;flex:none;background:var(--punto,#5d5a66);box-shadow:0 0 8px var(--punto,transparent)}
+.estado[data-estado="en-linea"]{--punto:var(--neon)}
+.estado[data-estado="conectando"]{--punto:var(--ambar)}
+.nav{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;border:0;background:none;color:var(--luna-2);font-weight:500;cursor:pointer;text-align:left;width:100%}
+.nav:hover{background:var(--velo);color:var(--luna)}
+.nav[aria-current="page"]{background:rgba(242,237,225,.09);color:var(--luna);box-shadow:inset 2px 0 0 var(--neon)}
+.nav .n{margin-left:auto;font:500 11px var(--f-mono);color:var(--luna-2)}
+.nav svg{flex:none}
+.hueco{flex:1}
+.pie{font-size:11px;color:var(--luna-2);padding:6px 10px;opacity:.75;line-height:1.4}
+
+.contenido{display:flex;flex-direction:column;min-width:0;min-height:0}
+.cab{padding:22px 28px 10px;-webkit-app-region:drag;display:flex;align-items:end;gap:16px}
+body.win .cab{padding-top:44px}
+.cab h1{font:600 22px var(--f-marca);margin:0;letter-spacing:.005em}
+.cab p{margin:2px 0 0;color:var(--luna-2);font-size:13px}
+.cab .acc{margin-left:auto;-webkit-app-region:no-drag;display:flex;gap:8px}
+.seccion{flex:1;overflow:auto;padding:6px 28px 20px;min-height:0}
+.seccion[hidden]{display:none}
+
+/* ---------- Chat ---------- */
+.chat{display:flex;flex-direction:column;gap:12px;padding-bottom:6px}
+.msg{max-width:min(78%,560px);padding:10px 14px;border-radius:16px;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;animation:entra .25s ease-out}
+.msg.byte-dice{background:var(--velo);border:1px solid var(--linea);border-bottom-left-radius:4px}
+.msg.yo{align-self:flex-end;background:var(--luna);color:var(--noche);border-bottom-right-radius:4px}
+.msg.sistema{align-self:center;background:none;border:1px dashed var(--linea);color:var(--luna-2);font-size:12px;border-radius:10px}
+.msg .emo{margin-right:6px}
+.escribiendo{display:inline-flex;gap:4px;padding:14px 16px}
+.escribiendo i{width:6px;height:6px;border-radius:50%;background:var(--luna-2);animation:punto 1.2s infinite}
+.escribiendo i:nth-child(2){animation-delay:.15s}.escribiendo i:nth-child(3){animation-delay:.3s}
+@keyframes punto{30%{transform:translateY(-4px);background:var(--neon)}}
+@keyframes entra{from{opacity:0;transform:translateY(4px)}}
+.vacio{margin:auto;text-align:center;color:var(--luna-2);display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 0}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 28px 10px}
+.chip{font-size:12px;font-weight:500;color:var(--luna-2);border:1px solid rgba(242,237,225,.12);border-radius:999px;padding:5px 11px;background:none;cursor:pointer}
+.chip:hover{color:var(--luna);border-color:rgba(242,237,225,.3)}
+.entrada{display:flex;gap:10px;align-items:center;margin:0 28px 20px;padding:7px 7px 7px 16px;border-radius:14px;background:var(--velo);border:1px solid rgba(242,237,225,.1)}
+.entrada:focus-within{border-color:rgba(159,247,228,.35)}
+.entrada input{flex:1;min-width:0;background:none;border:0;color:var(--luna);font-size:15px;outline:none}
+.entrada input::placeholder{color:var(--luna-2)}
+.boton-redondo{width:38px;height:38px;border-radius:11px;border:0;cursor:pointer;display:grid;place-items:center;background:var(--luna);color:var(--noche);box-shadow:0 0 18px rgba(159,247,228,.3);flex:none}
+.boton-redondo.parar{background:var(--ambar)}
+.boton-redondo[disabled]{opacity:.35;box-shadow:none;cursor:default}
+
+/* ---------- Piezas comunes ---------- */
+.btn{font-weight:600;font-size:13px;border-radius:9px;padding:7px 14px;cursor:pointer;border:1px solid rgba(242,237,225,.18);background:none;color:var(--luna)}
+.btn.si{background:var(--luna);color:var(--noche);border-color:var(--luna)}
+.btn:disabled{opacity:.45;cursor:default}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.caja{border:1px solid var(--linea);background:rgba(242,237,225,.03);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.caja .k{font:500 11px var(--f-mono);letter-spacing:.12em;color:var(--luna-2);text-transform:uppercase}
+.caja .v{font:600 22px var(--f-marca);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.caja .v.chico{font-size:15px}
+.barra{height:6px;border-radius:3px;background:var(--grafito);overflow:hidden}
+.barra i{display:block;height:100%;background:var(--neon);border-radius:3px;transition:width .6s}
+.nota{font-size:12px;color:var(--luna-2)}
+.lista{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.lista li{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(242,237,225,.03);border:1px solid rgba(242,237,225,.06);min-width:0}
+.lista li .d{margin-left:auto;font:500 11px var(--f-mono);color:var(--luna-2);text-align:right}
+.lista li.hecha label{text-decoration:line-through;color:var(--luna-2)}
+.lista .ruta{font:500 11px var(--f-mono);color:var(--luna-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font:500 11px var(--f-mono);padding:2px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+.pill.ok{color:var(--neon);border-color:rgba(159,247,228,.4)}
+.pill.pide{color:var(--ambar);border-color:rgba(255,198,107,.4)}
+.pill.no{color:var(--rojo);border-color:rgba(255,139,139,.4)}
+.campo{display:flex;gap:8px;flex-wrap:wrap}
+.campo input[type=text]{flex:1;min-width:220px;background:var(--velo);border:1px solid rgba(242,237,225,.12);border-radius:9px;padding:8px 12px;color:var(--luna);font:13px var(--f-mono);outline:none}
+.campo input[type=text]:focus{border-color:rgba(159,247,228,.4)}
+.grupo{display:flex;flex-direction:column;gap:10px;padding:16px 0;border-bottom:1px solid var(--linea)}
+.grupo h3{margin:0;font-size:14px;font-weight:600}
+.interruptor{display:flex;align-items:center;gap:10px;cursor:pointer}
+.reloj{font:600 72px var(--f-marca);font-variant-numeric:tabular-nums;text-align:center;margin:28px 0 6px;text-shadow:0 0 30px rgba(159,247,228,.3)}
+.centro{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.aviso{border:1px solid rgba(255,198,107,.35);background:rgba(255,198,107,.06);border-radius:12px;padding:12px 14px;color:var(--luna);font-size:13px}
+.aviso b{color:var(--ambar)}
+.oculto{display:none!important}
+
+@media (max-width:860px){
+  .app{grid-template-columns:64px minmax(0,1fr)}
+  .perfil>div,.nav span,.nav .n,.pie{display:none}
+  .perfil{justify-content:center;padding-inline:0}
+  .nav{justify-content:center;padding:10px 0}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Detalles finales */
+[hidden]{display:none!important}
+input[type=checkbox]{accent-color:var(--neon);width:16px;height:16px}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(242,237,225,.12);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(242,237,225,.22)}
+::-webkit-scrollbar-track{background:transparent}
