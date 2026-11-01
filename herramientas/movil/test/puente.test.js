@@ -118,3 +118,10 @@ test('texto y voz pasan por el puente (Opus ⇄ PCM)', async (t) => {
   assert.strictEqual(c.mic.length, 5, '4000 muestras = 4 paquetes llenos + 1 final');
   ws.close();
 });
+
+test('lee el nombre de Tailscale aunque haya avisos antes del JSON', () => {
+  const { nombreDesdeEstado } = require('../puente.js');
+  const salida = 'Warning: client version "1.104.4" != tailscaled server version "1.104.2"\n{"Self":{"DNSName":"alejandro-lopez.tail1234.ts.net."}}';
+  assert.strictEqual(nombreDesdeEstado(salida), 'alejandro-lopez.tail1234.ts.net');
+  assert.strictEqual(nombreDesdeEstado('sin json'), null);
+});
