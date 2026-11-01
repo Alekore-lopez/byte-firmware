@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:">
+<title>Byte Desk</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<div class="app">
+  <nav class="lateral" aria-label="Secciones">
+    <div class="perfil">
+      <div class="byte" data-estado="desconectado"><i class="ojo"></i><i class="ojo"></i></div>
+      <div><b>Byte</b><span class="estado" id="estado" data-estado="desconectado">sin conexión</span></div>
+    </div>
+    <div id="menu"></div>
+    <div class="hueco"></div>
+    <div class="pie" id="pie">Tu escritorio tiene nueva personalidad</div>
+  </nav>
+
+  <main class="contenido">
+    <header class="cab">
+      <div><h1 id="titulo">Chat</h1><p id="subtitulo">Habla o escribe con Byte</p></div>
+      <div class="acc" id="acciones-cab"></div>
+    </header>
+
+    <section class="seccion" id="s-inicio" hidden></section>
+
+    <section class="seccion" id="s-chat">
+      <div class="chat" id="chat" aria-live="polite"></div>
+    </section>
+
+    <section class="seccion" id="s-tareas" hidden>
+      <form class="campo" id="f-tarea" style="margin-bottom:14px">
+        <input type="text" id="nueva-tarea" placeholder="Nueva tarea, por ejemplo: medir la placa" maxlength="300" autocomplete="off">
+        <button class="btn si" type="submit">Agregar</button>
+      </form>
+      <ul class="lista" id="lista-tareas"></ul>
+      <p class="nota" id="tareas-vacio">Aún no hay tareas. Escribe una arriba.</p>
+    </section>
+
+    <section class="seccion" id="s-enfoque" hidden>
+      <div class="reloj" id="reloj">25:00</div>
+      <p class="nota" style="text-align:center" id="enfoque-nota">Elige un tiempo. Byte te avisa cuando termine.</p>
+      <div class="centro" style="margin-top:12px">
+        <button class="btn si" id="enfoque-iniciar">Empezar</button>
+        <button class="btn" data-min="25">25 min</button>
+        <button class="btn" data-min="15">15 min</button>
+        <button class="btn" data-min="5">5 min</button>
+      </div>
+    </section>
+
+    <section class="seccion" id="s-archivos" hidden>
+      <p class="nota" style="margin-top:0">Estas son las únicas carpetas que Byte podrá ordenar. Nada fuera de aquí.</p>
+      <ul class="lista" id="lista-carpetas"></ul>
+      <div class="aviso" style="margin-top:14px"><b>Llega en la fase 3.</b> Byte te mostrará primero qué va a mover y a dónde, tú confirmas, nunca borra nada y siempre podrás deshacer.</div>
+    </section>
+
+    <section class="seccion" id="s-mensajes" hidden>
+      <ul class="lista">
+        <li>WhatsApp <span class="d"><span class="pill pide">borrador, tú presionas Enviar</span></span></li>
+        <li>Telegram <span class="d"><span class="pill ok">envía con tu OK</span></span></li>
+        <li>Correo <span class="d"><span class="pill ok">envía con tu OK</span></span></li>
+      </ul>
+      <div class="aviso" style="margin-top:14px"><b>Llega en la fase 4.</b> Dirás “Byte, dile a Paula que ya voy” y Byte te mostrará el mensaje exacto antes de enviarlo.</div>
+    </section>
+
+    <section class="seccion" id="s-equipo" hidden>
+      <div class="rejilla" id="rejilla-equipo"></div>
+    </section>
+
+    <section class="seccion" id="s-ajustes" hidden>
+      <div class="grupo">
+        <h3>Central de Byte</h3>
+        <p class="nota" style="margin:0" id="ayuda-central"></p>
+        <form class="campo" id="f-central">
+          <input type="text" id="central-url" spellcheck="false" autocomplete="off" aria-label="Dirección de la central">
+          <button class="btn si" type="submit">Guardar y conectar</button>
+          <button class="btn" type="button" id="reconectar">Reconectar</button>
+        </form>
+        <p class="nota" style="margin:0" id="central-info"></p>
+      </div>
+      <div class="grupo">
+        <h3>Voz</h3>
+        <label class="interruptor"><input type="checkbox" id="voz-activa"> Escuchar la voz de Byte en este computador</label>
+        <p class="nota" style="margin:0" id="voz-nota"></p>
+      </div>
+      <div class="grupo">
+        <h3>Siempre activo</h3>
+        <label class="interruptor"><input type="checkbox" id="abrir-inicio"> <span id="texto-inicio">Abrir Byte al encender el computador</span></label>
+        <p class="nota" style="margin:0">Atajo para llamarlo desde cualquier app: <b id="atajo"></b>. Cerrar la ventana no apaga a Byte: sigue en la barra.</p>
+      </div>
+      <div class="grupo" style="border-bottom:0">
+        <h3>Conversación</h3>
+        <div><button class="btn" id="borrar-chat" type="button">Borrar el historial de este chat</button></div>
+        <p class="nota" style="margin:0">Solo borra lo que ves aquí. Lo que Byte recuerda de ti vive en la central.</p>
+      </div>
+    </section>
+
+    <div id="zona-entrada">
+      <div class="chips" id="chips">
+        <button class="chip" data-p="Hola Byte">Saludar</button>
+        <button class="chip" data-p="¿Qué clima hace hoy?">¿Qué clima hace?</button>
+        <button class="chip" data-p="Cuéntame las noticias de hoy en una frase">Noticias</button>
+        <button class="chip" data-p="¿Qué está sonando en Spotify?">¿Qué suena?</button>
+      </div>
+      <form class="entrada" id="f-chat">
+        <input id="texto" placeholder="Pregúntame algo…" autocomplete="off" maxlength="2000" aria-label="Mensaje para Byte">
+        <button class="boton-redondo" type="submit" id="boton-enviar" aria-label="Enviar"></button>
+      </form>
+    </div>
+  </main>
+</div>
+<script src="comun.js"></script>
+<script src="voz.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

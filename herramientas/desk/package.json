@@ -1,0 +1,36 @@
+{
+  "name": "byte-desk",
+  "productName": "Byte Desk",
+  "version": "0.1.0",
+  "description": "Byte en tu escritorio: chat en vivo con la central de Byte, siempre en la barra (Windows y Mac).",
+  "main": "src/main.js",
+  "author": "Alejandro",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"test/*.test.js\"",
+    "central-falsa": "node test/central-falsa.js",
+    "dist:win": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac dmg --arm64"
+  },
+  "dependencies": {
+    "ws": "8.18.0"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "co.byte.desk",
+    "productName": "Byte Desk",
+    "files": ["src/**", "renderer/**", "assets/**", "package.json"],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icono.png",
+      "extendInfo": { "LSUIElement": false }
+    },
+    "win": { "icon": "assets/icono.png" },
+    "nsis": { "oneClick": true, "perMachine": false, "shortcutName": "Byte Desk" }
+  }
+}
