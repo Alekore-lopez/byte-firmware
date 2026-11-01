@@ -84,6 +84,8 @@ $salida = & $ts serve --bg $PUERTO 2>&1 | Out-String
 if ($LASTEXITCODE -eq 0) {
   $dns = ((& $ts status --json | Out-String | ConvertFrom-Json).Self.DNSName).TrimEnd(".")
   Ok "Byte esta en: https://$dns"
+  # El puente la lee de aqui si al arrancar no encuentra el programa de Tailscale
+  Set-Content -Path (Join-Path $datos "direccion.txt") -Value $dns -Encoding ASCII
 } else {
   Mal "tailscale serve no funciono."
   if ($salida -match "HTTPS|cert") {

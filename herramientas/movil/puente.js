@@ -81,7 +81,7 @@ function limpiarRegistro(texto) {
 function ejecutar(cmd, args, { cwd, timeout = 60000 } = {}) {
   return new Promise((resolve) => {
     execFile(cmd, args, { cwd, timeout, windowsHide: true, maxBuffer: 2 * 1024 * 1024 }, (error, stdout, stderr) => {
-      resolve({ ok: !error, codigo: error ? (error.code ?? 1) : 0, salida: `${stdout || ''}${stderr || ''}` });
+      resolve({ ok: !error, codigo: error ? (error.code ?? 1) : 0, salida: `${stdout || ''}${stderr || ''}`, stdout: stdout || '' });
     });
   });
 }
@@ -125,15 +125,41 @@ function comandosReales() {
   };
 }
 
-/** Pide a Tailscale la dirección HTTPS de este computador (ej. hp.tail1234.ts.net). */
-async function direccionTailscale() {
-  if (process.env.BYTE_MOVIL_DIRECCION) return process.env.BYTE_MOVIL_DIRECCION;
-  const r = await ejecutar('tailscale', ['status', '--json'], { timeout: 6000 });
-  if (!r.ok) return null;
+/** Dónde puede estar el programa de Tailscale (si no está en el PATH del arranque). */
+const TAILSCALE = [
+  'tailscale',
+  path.join(process.env.ProgramFiles || 'C:\\Program Files', 'Tailscale', 'tailscale.exe'),
+  '/Applications/Tailscale.app/Contents/MacOS/Tailscale',
+  '/usr/bin/tailscale',
+];
+
+/** Lee el nombre DNS de la salida de "tailscale status --json" (ignora avisos sueltos). */
+function nombreDesdeEstado(texto) {
+  const t = String(texto || '');
+  const i = t.indexOf('{');
+  if (i < 0) return null;
   try {
-    const dns = JSON.parse(r.salida).Self.DNSName || '';
+    const dns = (JSON.parse(t.slice(i)).Self || {}).DNSName || '';
     return dns.replace(/\.$/, '') || null;
   } catch { return null; }
+}
+
+/**
+ * La dirección HTTPS de este computador en Tailscale (ej. alejandro-lopez.tail1234.ts.net).
+ * 1) variable BYTE_MOVIL_DIRECCION, 2) "tailscale status", 3) lo que guardó el instalador.
+ */
+async function direccionTailscale(carpeta = path.join(CARPETA_SERVIDOR, 'movil')) {
+  if (process.env.BYTE_MOVIL_DIRECCION) return process.env.BYTE_MOVIL_DIRECCION;
+  for (const exe of TAILSCALE) {
+    const r = await ejecutar(exe, ['status', '--json'], { timeout: 6000 });
+    const dns = nombreDesdeEstado(r.stdout);
+    if (dns) return dns;
+  }
+  try {
+    const guardada = fs.readFileSync(path.join(carpeta, 'direccion.txt'), 'utf8').trim();
+    if (/^[a-z0-9.-]+\.ts\.net$/i.test(guardada)) return guardada;
+  } catch { /* el instalador aún no la guardó */ }
+  return null;
 }
 
 // ---------------------------------------------------------------- Archivos de la app
@@ -364,7 +390,7 @@ function crearPuente({
   // Página para emparejar: SOLO en este computador (Tailscale no la comparte).
   const emparejar = http.createServer(async (req, res) => {
     if (new URL(req.url, 'http://x').pathname !== '/') { res.writeHead(404); return res.end(); }
-    const dir = await direccion();
+    const dir = await direccion(carpeta);
     const enlace = dir ? `https://${dir}/#clave=${clave}` : null;
     let qr = '';
     if (enlace) { try { qr = await require('qrcode').toString(enlace, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }); } catch { qr = ''; } }
@@ -428,4 +454,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { crearPuente, limpiarRegistro, claveCorrecta, unirConCentral };
+module.exports = { crearPuente, limpiarRegistro, claveCorrecta, unirConCentral, nombreDesdeEstado };
