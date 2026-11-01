@@ -152,10 +152,13 @@ class Central extends EventEmitter {
     this.ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: texto }));
   }
 
-  /** Empieza a escuchar por voz (como cuando tocas la cara de la placa). */
-  escuchar() {
+  /**
+   * Empieza a escuchar por voz. En modo 'manual' Byte Desk decide cuándo
+   * terminaste de hablar (y manda dejarDeEscuchar); en 'auto' lo decide la central.
+   */
+  escuchar(modo = 'manual') {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.estado !== 'en-linea') return false;
-    this.ws.send(JSON.stringify({ type: 'listen', session_id: this.sessionId, state: 'start', mode: 'auto' }));
+    this.ws.send(JSON.stringify({ type: 'listen', session_id: this.sessionId, state: 'start', mode: modo }));
     return true;
   }
 

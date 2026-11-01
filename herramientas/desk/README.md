@@ -84,6 +84,8 @@ La central **se queda en el HP**; la Mac solo se conecta a ella por el WiFi de l
    ```
    Crea **Byte Desk** en Aplicaciones con el ícono de Byte (Cmd + Espacio → "Byte Desk"). Si Electron quedó a medias (pasa con Node.js muy nuevo: *"Electron failed to install correctly"*), el script lo arregla solo.
 
+8. **Hablarle con la voz**: toca la cara de Byte o el botón 🎤 del chat. El filtro de voz (`renderer/microfono.js`) solo abre el micrófono si alguien habla **cerca** y fuerte por encima del ruido de fondo (la TV o un celular lejos no lo abren), y da por terminada la frase tras **1,6 s de silencio**, así no te corta en una pausa. Mientras Byte habla no escucha; vuelve a escuchar medio segundo después de que termina de sonar, y si nadie habla en 15 s descansa.
+
 Para actualizar después: `cd ~/byte-firmware && git pull && cd herramientas/desk && npm install && npm start`.
 
 ### Si la Mac no se conecta al HP
