@@ -435,7 +435,8 @@ function setFace(id) {
   
 }
 function drawFace(now) {
-  const k = Math.min(1, (now - t0) / 260), e = 1 - Math.pow(1 - k, 3);
+  // Transición de 420 ms con entrada y salida suaves (antes 260 ms: se sentía brusco).
+  const k = Math.min(1, (now - t0) / 420), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
   st.k = e;
   ['L', 'R'].forEach(s => { NUM.forEach(n => st[s][n] = lerp(from[s][n], target[s][n], e)); st[s].shape = k < .5 ? from[s].shape : target[s].shape; });
   st.col = from.col.map((c, i) => lerp(c, target.col[i], e));
@@ -543,6 +544,16 @@ function speak(text, done) {
 /* ---------- Qué cara mostrar (igual que ByteFaceDisplay::ChooseFace) ---------- */
 const EMO = { happy: 'feliz', relaxed: 'feliz', delicious: 'feliz', laughing: 'risa', funny: 'risa', loving: 'carino', kissy: 'carino', cool: 'cool', surprised: 'sorpresa', shocked: 'sorpresa', angry: 'enfado', sad: 'tristeza', crying: 'tristeza', embarrassed: 'oops', confused: 'oops', winking: 'guino', silly: 'guino', thinking: 'pensando', sleepy: 'dormido', confident: 'exito' };
 let shownFace = 'reposo';
+/* Cambios de cara suaves: cada cara se queda un mínimo de tiempo en pantalla
+   (las emociones un poco más), así no parpadea de una cara a otra. */
+let faceSince = 0;
+const HOLD_MS = 600, HOLD_EMO_MS = 1800;
+const ESTADOS_CARA = new Set(['reposo', 'escucha', 'pensando', 'hablando', 'dormido', 'wifi', 'mute']);
+function faceReady(want, now) {
+  if (S.screen === 'faces' || S.power === 'boot') return true;
+  const hold = ESTADOS_CARA.has(shownFace) ? HOLD_MS : HOLD_EMO_MS;
+  return now - faceSince >= hold;
+}
 function chooseFace(now) {
   if (S.screen === 'faces') return FACES[S.faceIdx].id;
   if (S.dev === 'connecting' || S.dev === 'thinking') return 'pensando';
@@ -975,7 +986,7 @@ function frame(now) {
   play.sleepy = phase === 2 ? .95 * (idleFor - SLEEPY_MS) / (SLEEP_MS - SLEEPY_MS) : 0;
   if ((phase === 3) !== S.sleeping) { S.sleeping = phase === 3; applyBrightness(); if (S.sleeping) log('Se durmió: cara "Dormido" y brillo al 15 %'); }
   // cara
-  const want = chooseFace(now); if (want !== shownFace) { shownFace = want; setFace(want); }
+  const want = chooseFace(now); if (want !== shownFace && faceReady(want, now)) { shownFace = want; faceSince = now; setFace(want); }
   S.qp += (S.qpTo - S.qp) * (reduceMotion ? 1 : .22); if (Math.abs(S.qp - S.qpTo) < .01) S.qp = S.qpTo;
   const showFace = ['home', 'faces'].includes(S.screen);
   if (showFace) drawFace(now); else { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 320, 240); }
@@ -1001,6 +1012,7 @@ const live = { on: false, enabled: enDesk || location.origin === LIVE_URL };
 function liveWake() { S.sleeping = false; S.lastTouch = performance.now(); S.idleOffset = 0; applyBrightness(); }
 function onLive(m) {
   const now = performance.now();
+  live.ultimo = now;
   if (m.type === 'state') {
     if (m.state === 'listening') {
       if (S.dev !== 'listening' && S.dev !== 'thinking') { S.user = ''; S.reply = ''; S.expr = null; S.screen = 'home'; S.qpTo = 0; }
@@ -1032,6 +1044,15 @@ function onLive(m) {
     S.reply = m.text; S.replyT = now; log(`Display::SetChatMessage("assistant", "${m.text}")`);
   }
 }
+/* Si la central se queda callada a mitad de algo (se cayó, no entendió),
+   la cara no se queda trabada en Pensando/Hablando: vuelve a reposo sola. */
+setInterval(() => {
+  if (!live.on || !live.ultimo) return;
+  const quieto = performance.now() - live.ultimo;
+  if ((S.dev === 'thinking' && quieto > 25000) || (S.dev === 'speaking' && quieto > 15000)) {
+    log('La central no siguió: vuelvo a reposo'); S.tool = ''; S.reply = ''; S.user = ''; setDev('idle');
+  }
+}, 2000);
 function liveTap() {
   // En Byte Desk: tocar la cara = Byte te escucha (otra vez = deja de escuchar).
   // Si está hablando, lo corta.
@@ -1059,6 +1080,7 @@ function deskConnect() {
   });
   if (b.alMic) b.alMic((estado) => {
     if (estado === 'escuchando') onLive({ type: 'state', state: 'listening' });
+    else if (estado === 'pensando' && S.dev === 'listening') { setDev('thinking'); liveWake(); }
     else if (estado === 'apagado' && S.dev === 'listening') onLive({ type: 'state', state: 'idle' });
   });
   b.alMensaje((m) => {

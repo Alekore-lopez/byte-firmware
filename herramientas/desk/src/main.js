@@ -33,8 +33,10 @@ let saliendo = false;
 
 // Micrófono: como en la placa, tocas la cara y Byte escucha. Después de que
 // contesta vuelve a escuchar un rato por si sigues hablando, y luego descansa.
-const ESPERA_VOZ_MS = 12000;
-const mic = { activo: false, temporizador: null };
+// El filtro de voz (renderer/microfono.js) decide cuándo empiezas y terminas.
+const ESPERA_VOZ_MS = 15000;      // sin que nadie hable en 15 s, Byte deja de escuchar
+const ESPERA_RESPUESTA_MS = 12000; // si la central no entendió nada, vuelve a escuchar
+const mic = { activo: false, temporizador: null, respuesta: null };
 
 // Solo una copia de Byte Desk a la vez: si la abren de nuevo, mostramos la que ya está.
 if (!app.requestSingleInstanceLock()) {
@@ -362,7 +364,6 @@ async function encenderMic() {
       return false;
     }
   }
-  if (!central.escuchar()) return false;
   mic.activo = true;
   controlMic('empezar');
   avisarMic('escuchando');
@@ -370,8 +371,38 @@ async function encenderMic() {
   return true;
 }
 
+/** Vuelve a escuchar (después de que Byte contestó, o si no entendió nada). */
+function volverAEscuchar() {
+  clearTimeout(mic.respuesta);
+  if (!mic.activo) return;
+  controlMic('reanudar');   // la ventana espera a que Byte termine de sonar
+}
+
+/** Lo que avisa el filtro de voz de la ventana grande. */
+function fraseMic(evento) {
+  if (!mic.activo) return;
+  if (evento === 'inicio') {
+    // Alguien empezó a hablar cerca: abrimos la escucha en la central.
+    clearTimeout(mic.temporizador);
+    central.escuchar('manual');
+  } else if (evento === 'fin') {
+    // Terminaste la frase: la central la transcribe y contesta.
+    central.dejarDeEscuchar();
+    avisarMic('pensando');
+    clearTimeout(mic.respuesta);
+    mic.respuesta = setTimeout(volverAEscuchar, ESPERA_RESPUESTA_MS);
+  } else if (evento === 'descartar') {
+    // Fue un ruidito corto: no lo mandamos a entender.
+    controlMic('reanudar');
+  } else if (evento === 'escuchando') {
+    avisarMic('escuchando');
+    esperarVoz();
+  }
+}
+
 function apagarMic() {
   clearTimeout(mic.temporizador);
+  clearTimeout(mic.respuesta);
   if (!mic.activo) return;
   mic.activo = false;
   controlMic('detener');
@@ -395,20 +426,13 @@ function micSegunCentral(m) {
     }
     clearTimeout(mic.temporizador);
     controlMic('pausar');
-    avisarMic('pausado');
   } else if (m.type === 'tts' && m.state === 'start') {
     clearTimeout(mic.temporizador);
+    clearTimeout(mic.respuesta);
     controlMic('pausar');
-    avisarMic('pausado');
   } else if (m.type === 'tts' && m.state === 'stop') {
-    // Dejamos terminar la última frase y volvemos a escuchar.
-    setTimeout(() => {
-      if (!mic.activo) return;
-      if (!central.escuchar()) { apagarMic(); return; }
-      controlMic('reanudar');
-      avisarMic('escuchando');
-      esperarVoz();
-    }, 700);
+    // La ventana espera a que la última frase termine de sonar y vuelve a escuchar.
+    volverAEscuchar();
   }
 }
 
@@ -435,6 +459,10 @@ function registrarPeticiones() {
     if (!mic.activo || !ventana || e.sender !== ventana.webContents) return;
     if (!(bytes instanceof Uint8Array) || bytes.byteLength > 4000) return;
     central.enviarAudio(Buffer.from(bytes));
+  });
+  ipcMain.on('mic:frase', (e, evento) => {
+    if (!ventana || e.sender !== ventana.webContents) return;
+    if (['inicio', 'fin', 'descartar', 'escuchando'].includes(evento)) fraseMic(evento);
   });
   ipcMain.on('mic:error', (_e, texto) => {
     apagarMic();

@@ -65,14 +65,28 @@ window.byte.alAudio((bytes) => voz.paquete(bytes));
 // ---------- Micrófono (tocar la cara o el botón: Byte te escucha) ----------
 // Esta ventana es la que graba (está siempre viva, aunque esté escondida).
 const micro = new MicrofonoDeByte({
+  alEmpezarFrase: () => window.byte.fraseMic('inicio'),
   alPaquete: (bytes) => window.byte.enviarAudio(bytes),
+  alTerminarFrase: (valida) => window.byte.fraseMic(valida ? 'fin' : 'descartar'),
   alError: (t) => window.byte.micError(t),
 });
+// Antes de volver a escuchar esperamos a que Byte termine de sonar (+0,5 s),
+// para que el micrófono no se trague el final de su propia voz.
+let esperaVoz = null;
+function reanudarCuandoCalle() {
+  clearInterval(esperaVoz);
+  esperaVoz = setInterval(() => {
+    const sonando = voz.fuentes.size > 0 || (voz.ctx && voz.siguiente > voz.ctx.currentTime);
+    if (sonando) return;
+    clearInterval(esperaVoz);
+    setTimeout(() => { micro.reanudar(); window.byte.fraseMic('escuchando'); }, 500);
+  }, 150);
+}
 window.byte.alControlMic(async (orden) => {
-  if (orden === 'empezar') await micro.empezar();
-  else if (orden === 'pausar') micro.pausar();
-  else if (orden === 'reanudar') micro.reanudar();
-  else if (orden === 'detener') micro.detener();
+  if (orden === 'empezar') { clearInterval(esperaVoz); if (await micro.empezar()) window.byte.fraseMic('escuchando'); }
+  else if (orden === 'pausar') { clearInterval(esperaVoz); micro.pausar(); }
+  else if (orden === 'reanudar') reanudarCuandoCalle();
+  else if (orden === 'detener') { clearInterval(esperaVoz); micro.detener(); }
 });
 function pintarMic(estado) {
   const b = $('#boton-mic');
