@@ -35,7 +35,7 @@ if ($voz -eq $vozActual) { Write-Host "Esa ya es la voz de Byte. No cambie nada.
 Write-Host ""
 Write-Host "=== 1) Prueba de la voz nueva ===" -ForegroundColor Cyan
 $prueba = Join-Path $env:TEMP "byte-voz-prueba.mp3"
-$cuerpo = @{ text = "Hola Alecore, soy Byte. Asi suena mi voz nueva. Que tal te parece?"; model_id = "eleven_flash_v2_5"; language_code = "es" } | ConvertTo-Json
+$cuerpo = @{ text = "Hola Alejandro, soy Byte. Asi suena mi voz nueva. Que tal te parece?"; model_id = "eleven_flash_v2_5"; language_code = "es" } | ConvertTo-Json
 try {
   Invoke-WebRequest -UseBasicParsing -Method Post `
     -Uri "https://api.elevenlabs.io/v1/text-to-speech/$voz`?output_format=mp3_44100_128" `
