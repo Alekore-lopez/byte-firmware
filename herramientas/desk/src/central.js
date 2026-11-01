@@ -75,8 +75,8 @@ class Central extends EventEmitter {
     }, ESPERA_HELLO_MS);
 
     ws.on('open', () => {
-      // Le decimos a la central cómo es nuestro audio. Por ahora solo
-      // escuchamos su voz; el micrófono llega en la fase 2.
+      // Le decimos a la central cómo es nuestro audio: el del micrófono
+      // va en Opus 16 kHz, un canal, paquetes de 60 ms (igual que la placa).
       ws.send(JSON.stringify({
         type: 'hello',
         version: 1,
@@ -150,6 +150,27 @@ class Central extends EventEmitter {
 
   _enviarTexto(texto) {
     this.ws.send(JSON.stringify({ type: 'listen', state: 'detect', text: texto }));
+  }
+
+  /** Empieza a escuchar por voz (como cuando tocas la cara de la placa). */
+  escuchar() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.estado !== 'en-linea') return false;
+    this.ws.send(JSON.stringify({ type: 'listen', session_id: this.sessionId, state: 'start', mode: 'auto' }));
+    return true;
+  }
+
+  /** Deja de escuchar por voz. */
+  dejarDeEscuchar() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'listen', session_id: this.sessionId, state: 'stop' }));
+    }
+  }
+
+  /** Manda un paquete de voz (Opus 16 kHz, 60 ms) del micrófono. */
+  enviarAudio(paquete) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN || this.estado !== 'en-linea') return false;
+    this.ws.send(paquete, { binary: true });
+    return true;
   }
 
   /** Interrumpe a Byte mientras habla (botón "Detener"). */

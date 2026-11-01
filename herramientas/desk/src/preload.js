@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('byte', {
   // Hablar con Byte
   preguntar: (texto) => ipcRenderer.invoke('byte:preguntar', texto),
   interrumpir: () => ipcRenderer.invoke('byte:interrumpir'),
+  hablar: () => ipcRenderer.invoke('byte:hablar'),          // tocar la cara: empieza o deja de escuchar
+  enviarAudio: (bytes) => ipcRenderer.send('mic:audio', bytes),
+  alMic: escuchar('mic:estado'),                              // 'escuchando' | 'pausado' | 'apagado'
+  alControlMic: escuchar('mic:control'),                      // solo la ventana grande: 'empezar' | 'pausar' | 'reanudar' | 'detener'
+  micError: (texto) => ipcRenderer.send('mic:error', texto),
   reconectar: () => ipcRenderer.invoke('byte:reconectar'),
   estado: () => ipcRenderer.invoke('byte:estado'),
 

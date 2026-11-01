@@ -9,8 +9,8 @@
 #
 # Qué hace, paso a paso:
 #   1. Revisa que Electron esté completo (con Node.js muy nuevo a veces queda a medias) y lo arregla.
-#   2. Crea una app pequeña "Byte Desk.app" en ~/Applications que abre Byte Desk.
-#   3. Le pone el ícono de Byte.
+#   2. Le dice a macOS para qué se usa el micrófono y la red local.
+#   3. Crea "Byte Desk.app" y "Cara de Byte.app" en ~/Applications, con el ícono de Byte.
 # No borra nada tuyo y no pide contraseña.
 
 set -euo pipefail
@@ -46,12 +46,23 @@ if [ ! -x "$BINARIO" ] || [ ! -f "$ELECTRON_DIR/path.txt" ]; then
   echo "Electron listo."
 fi
 
-# 2. La app pequeña que abre Byte Desk (AppleScript, firmada por la propia Mac)
-mkdir -p "$HOME/Applications"
-rm -rf "$APP"
-osacompile -o "$APP" -e "do shell script quoted form of \"$BINARIO\" & \" \" & quoted form of \"$DESK\" & \" > /dev/null 2>&1 &\""
+# 2. Que macOS sepa para qué pide Electron el micrófono y la red local.
+#    Si falta ese texto, macOS cierra la app al pedir el micrófono.
+PLIST_EL="$ELECTRON_DIR/dist/Electron.app/Contents/Info.plist"
+CAMBIO=0
+if ! /usr/libexec/PlistBuddy -c "Print :NSMicrophoneUsageDescription" "$PLIST_EL" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string Byte te escucha cuando tocas su cara." "$PLIST_EL"; CAMBIO=1
+fi
+if ! /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$PLIST_EL" >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c "Add :NSLocalNetworkUsageDescription string Byte se conecta a su central en el HP de la casa." "$PLIST_EL"; CAMBIO=1
+fi
+if [ "$CAMBIO" = 1 ]; then
+  codesign --force --deep --sign - "$ELECTRON_DIR/dist/Electron.app" >/dev/null 2>&1 || true
+fi
 
-# 3. Ícono de Byte
+# 3. Dos apps pequeñas: "Byte Desk" (la app) y "Cara de Byte" (solo la cara).
+#    Abren Electron con "open", así macOS le pregunta los permisos a Electron.
+mkdir -p "$HOME/Applications"
 TMP="$(mktemp -d)"
 ICONSET="$TMP/byte.iconset"
 mkdir -p "$ICONSET"
@@ -59,17 +70,26 @@ for t in 16 32 128 256 512; do
   sips -z $t $t "$DESK/assets/icono.png" --out "$ICONSET/icon_${t}x${t}.png" >/dev/null
   sips -z $((t * 2)) $((t * 2)) "$DESK/assets/icono.png" --out "$ICONSET/icon_${t}x${t}@2x.png" >/dev/null
 done
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/applet.icns"
-# macOS nuevo usa el ícono de Assets.car (CFBundleIconName) antes que applet.icns: lo quitamos.
-rm -f "$APP/Contents/Resources/Assets.car"
-/usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APP/Contents/Info.plist" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Set :CFBundleIconFile applet" "$APP/Contents/Info.plist" 2>/dev/null || true
+iconutil -c icns "$ICONSET" -o "$TMP/byte.icns"
+
+crear_app() {
+  local destino="$1" extra="$2"
+  rm -rf "$destino"
+  osacompile -o "$destino" -e "do shell script \"open -n -a \" & quoted form of \"$ELECTRON_DIR/dist/Electron.app\" & \" --args \" & quoted form of \"$DESK\" & \" $extra\""
+  cp "$TMP/byte.icns" "$destino/Contents/Resources/applet.icns"
+  # macOS nuevo usa el ícono de Assets.car (CFBundleIconName) antes que applet.icns: lo quitamos.
+  rm -f "$destino/Contents/Resources/Assets.car"
+  /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$destino/Contents/Info.plist" 2>/dev/null || true
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile applet" "$destino/Contents/Info.plist" 2>/dev/null || true
+  codesign --force --deep --sign - "$destino" >/dev/null 2>&1 || true
+  touch "$destino"
+}
+crear_app "$APP" ""
+crear_app "$HOME/Applications/Cara de Byte.app" "--cara"
 rm -rf "$TMP"
-codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
-touch "$APP"
 
 echo ""
-echo "Listo: \"Byte Desk\" está en tu carpeta Aplicaciones (~/Applications)."
+echo "Listo: \"Byte Desk\" y \"Cara de Byte\" están en tu carpeta Aplicaciones (~/Applications)."
 echo "Ábrelo con Cmd + Espacio → escribe \"Byte Desk\" → Enter."
-echo "Para tenerlo en el Dock: arrastra \"Byte Desk\" desde la ventana que se abre hasta el Dock."
+echo "\"Cara de Byte\" abre solo la cara: tócala para hablarle. Puedes arrastrarla al Dock."
 open -R "$APP"
