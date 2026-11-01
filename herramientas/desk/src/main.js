@@ -196,7 +196,29 @@ function aplicarInicio(activo) {
   // Si la app corre con `npm start` (no instalada), Electron necesita saber
   // también la carpeta de Byte Desk; si no, abriría un Electron vacío.
   const args = app.isPackaged ? ['--oculto'] : [app.getAppPath(), '--oculto'];
-  app.setLoginItemSettings({ openAtLogin: Boolean(activo), path: process.execPath, args, openAsHidden: true });
+  app.setLoginItemSettings({ openAtLogin: Boolean(activo), path: process.execPath, args, openAsHidden: true, name: 'Byte Desk' });
+  if (ES_WIN) limpiarInicioViejo();
+}
+
+/**
+ * La versión 0.1.0 corrida con `npm start` registraba "electron.exe --oculto" sin la
+ * carpeta de la app: al prender el PC abría un Electron vacío. Borramos SOLO esa
+ * entrada (la del electron.exe de herramientas\desk que no lleva la carpeta).
+ */
+function limpiarInicioViejo() {
+  try {
+    const { launchItems = [] } = app.getLoginItemSettings();
+    for (const item of launchItems) {
+      const ruta = String(item.path || '').toLowerCase();
+      const argumentos = (item.args || []).join(' ');
+      const esElViejo = ruta.includes('herramientas\\desk\\node_modules\\electron') && !/herramientas[\\/]desk["']?(\s|$)/i.test(argumentos);
+      if (esElViejo && item.name !== 'Byte Desk') {
+        app.setLoginItemSettings({ openAtLogin: false, name: item.name, path: item.path, args: item.args });
+      }
+    }
+  } catch (e) {
+    console.warn('No pude revisar el inicio de Windows:', e.message);
+  }
 }
 
 // ---------- Central ----------
