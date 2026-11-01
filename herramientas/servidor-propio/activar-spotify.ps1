@@ -76,7 +76,7 @@ Start-Sleep -Seconds 5
 $texto = [IO.File]::ReadAllText($conf, $utf8)
 if ($texto -notmatch "spotify_poner") {
   $u = [char]0xFA
-  $linea = "  - Para poner m${u}sica usa spotify_poner y para pausar, seguir o cambiar de canci$([char]0xF3)n usa spotify_control. La m${u}sica suena en el Spotify de Alecore (PC, celular o TV), no en tu parlante."
+  $linea = "  - Para poner m${u}sica usa spotify_poner y para pausar, seguir o cambiar de canci$([char]0xF3)n usa spotify_control. La m${u}sica suena en el Spotify de Alejandro (PC, celular o TV), no en tu parlante."
   $nuevo = [regex]::Replace($texto, "(?m)^(  - Si la pregunta no se entiende)", "$linea`n`$1")
   if ($nuevo -ne $texto) {
     Copy-Item $conf "$conf.antes-de-spotify" -Force

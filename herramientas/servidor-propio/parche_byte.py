@@ -30,6 +30,9 @@ reinicios y actualizaciones sin romper nada.
    fábrica. Con eso Byte saluda y, si recuerda algo, te lo propone.
 9. Whisper a veces oye "Suspéndete" en inglés ("Suspended", "Suspended Day").
    Se corrige a "Suspéndete." antes de que llegue a Gemini.
+10. El dueño se llama Alejandro (antes Byte lo llamaba por un apodo). Si la
+    central ya tenía puestos los arreglos 3, 5 y 6 con el apodo viejo, aquí se
+    cambia por "Alejandro".
 """
 
 import os
@@ -108,7 +111,7 @@ parchar(
     '"language": "es"',
     lambda t: re.sub(
         r'data = \{\s*"model": self\.model\s*\}',
-        'data = {"model": self.model, "language": "es", "prompt": "Byte, Alecore, Paula."}',
+        'data = {"model": self.model, "language": "es", "prompt": "Byte, Alejandro, Paula."}',
         t,
         count=1,
     ),
@@ -130,13 +133,13 @@ parchar(
 MEMORIA_ES = '''short_term_memory_prompt = """
 Eres el cuaderno de memoria de Byte (versión 2), un asistente de voz de una casa en Colombia.
 Lee la conversación nueva, la música que sonó y la memoria anterior, y devuelve la memoria COMPLETA y ACTUALIZADA, en español.
-Tu objetivo: que Byte conozca cada vez mejor a las personas de la casa (Alecore, Paula u otras) y pueda proponerles cosas.
+Tu objetivo: que Byte conozca cada vez mejor a las personas de la casa (Alejandro, Paula u otras) y pueda proponerles cosas.
 
 Qué guardar:
 - personas: datos duraderos (a qué se dedica, mascotas, familia, proyectos).
 - gustos: música (artistas, géneros, playlists), temas que le interesan, comida, series, cómo le gusta que Byte le hable.
   Si pidió algo dos o más veces, o dijo "me encanta", es un gusto. Si dijo que algo no le gusta, guárdalo como "no le gusta".
-- rutinas: costumbres con día u hora (ej. "Alecore: pone música para trabajar en la tarde").
+- rutinas: costumbres con día u hora (ej. "Alejandro: pone música para trabajar en la tarde").
 - fechas: cumpleaños, citas, eventos, con su fecha.
 - pendientes: cosas que pidió recordar o que quedaron por hacer.
 - ultima_vez: una frase con la fecha de lo principal que hicieron en esta conversación (música que sonó, tema que hablaron).
@@ -147,17 +150,17 @@ Qué no guardar: saludos, chistes, clima, noticias del día, claves, contraseña
 Reglas:
 - Escribe las fechas como día-mes corto (31-oct) usando la fecha de ahora que te doy al final. Nunca escribas "ayer" u "hoy".
 - Si un dato cambió, deja solo el nuevo. Si algo ya pasó o lleva más de 7 días en para_proponer, bórralo.
-- Si Alecore pidió explícitamente "recuerda que...", guárdalo sí o sí.
+- Si Alejandro pidió explícitamente "recuerda que...", guárdalo sí o sí.
 - Si pidió "olvida que..." u "olvida eso", bórralo de la memoria.
-- Nunca inventes datos ni mezcles personas: si no sabes quién lo dijo, es de Alecore.
+- Nunca inventes datos ni mezcles personas: si no sabes quién lo dijo, es de Alejandro.
 - Mantén la memoria corta: máximo 1500 caracteres en total. Si no cabe, quita lo más viejo y menos útil.
 
 Responde SOLO con un bloque JSON válido, sin explicaciones, con esta forma
 (los textos de ejemplo NO son datos reales, no los copies):
 ```json
 {
-  "personas": {"Alecore": ["dato"], "Paula": ["dato"]},
-  "gustos": {"musica": ["Alecore: dato"], "temas": ["Alecore: dato"], "otros": ["Paula: dato"]},
+  "personas": {"Alejandro": ["dato"], "Paula": ["dato"]},
+  "gustos": {"musica": ["Alejandro: dato"], "temas": ["Alejandro: dato"], "otros": ["Paula: dato"]},
   "rutinas": ["persona: costumbre y hora"],
   "fechas": ["evento: fecha"],
   "pendientes": ["cosa por recordar"],
@@ -185,10 +188,10 @@ parchar("core/providers/memory/mem_local_short/mem_local_short.py", "cuaderno de
 # 6) Oído más preciso: Whisper sin "creatividad" (temperature 0), una pista en
 #    español de cómo hablas, y filtro de las frases fantasma que Whisper inventa
 #    cuando le llega un pedacito de audio casi en silencio.
-WHISPER_VIEJO = '"prompt": "Byte, Alecore, Paula."}'
+WHISPER_VIEJO = '"prompt": "Byte, Alejandro, Paula."}'
 WHISPER_NUEVO = (
     '"prompt": "Hola Byte. Conversación en español de Colombia entre Byte, '
-    'Alecore y Paula.", "temperature": "0"}'
+    'Alejandro y Paula.", "temperature": "0"}'
 )
 FANTASMAS = '''
 _BYTE_FANTASMAS = (
@@ -326,3 +329,25 @@ def corregir(t):
 
 
 parchar("core/providers/asr/openai.py", "_BYTE_CORRECCIONES", corregir)
+
+
+# 10) El dueño se llama Alejandro. Los arreglos 3, 5 y 6 ya puestos con el apodo
+#     viejo no se vuelven a aplicar (tienen su marca), así que el nombre se
+#     cambia aquí directamente en esos archivos.
+APODO_VIEJO = "Ale" + "core"  # partido en dos para que este mismo archivo no lo cambie
+
+
+def nombre_dueno(ruta):
+    archivo = RAIZ / ruta
+    if not archivo.exists():
+        return
+    texto = archivo.read_text(encoding="utf-8")
+    if APODO_VIEJO not in texto:
+        print(f"[parche_byte] {ruta}: nombre ya estaba")
+        return
+    archivo.write_text(texto.replace(APODO_VIEJO, "Alejandro"), encoding="utf-8")
+    print(f"[parche_byte] {ruta}: ahora dice Alejandro")
+
+
+nombre_dueno("core/providers/asr/openai.py")
+nombre_dueno("core/providers/memory/mem_local_short/mem_local_short.py")

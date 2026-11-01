@@ -61,9 +61,9 @@ Bajar "gustos-prompt.txt" $tmp "spotify_retomar"
 $bloque = ([IO.File]::ReadAllText($tmp, $utf8)) -replace "`r`n", "`n"
 $texto = [IO.File]::ReadAllText($conf, $utf8)
 $orig = $texto
-if ($texto -match "LO QUE APRENDES DE ALECORE") {
+if ($texto -match "LO QUE APRENDES DE (ALECORE|ALEJANDRO)") {
   # Ya estaba: lo cambiamos por la version nueva (desde el titulo hasta la siguiente seccion)
-  $texto = [regex]::Replace($texto, "(?ms)^  # LO QUE APRENDES DE ALECORE.*?(?=^  # )", { param($m) $bloque })
+  $texto = [regex]::Replace($texto, "(?ms)^  # LO QUE APRENDES DE (ALECORE|ALEJANDRO).*?(?=^  # )", { param($m) $bloque })
 } elseif ($texto -match "(?m)^  # L.MITES") {
   $texto = [regex]::Replace($texto, "(?m)^(  # L.MITES)", { param($m) $bloque + $m.Groups[1].Value })
 } elseif ($texto -match "(?m)^  # EJEMPLOS") {

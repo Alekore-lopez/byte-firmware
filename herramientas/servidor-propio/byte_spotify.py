@@ -79,7 +79,7 @@ def _dispositivo(sp):
 
 
 def _sin_dispositivo():
-    return {"error": "No hay ningún Spotify abierto. Pídele a Alecore que abra Spotify en el PC, el celular o la TV."}
+    return {"error": "No hay ningún Spotify abierto. Pídele a Alejandro que abra Spotify en el PC, el celular o la TV."}
 
 
 def _error_spotify(e):
@@ -145,7 +145,7 @@ def registrar(mcp):
 
     @mcp.tool()
     def spotify_poner(busqueda: str, tipo: str = "cancion") -> dict:
-        """Pone música en Spotify (suena en el PC, celular o TV de Alecore, no en Byte).
+        """Pone música en Spotify (suena en el PC, celular o TV de Alejandro, no en Byte).
         busqueda: lo que pidió, por ejemplo "Karol G", "La Bicicleta de Shakira", "rock en español".
         tipo: "cancion", "artista", "album" o "playlist". Si piden un artista o un género,
         usa "artista" o "playlist". Confirma en una frase corta qué pusiste."""
