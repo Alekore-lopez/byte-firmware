@@ -105,6 +105,11 @@ exit_commands:
   - "chao byte"
   - "adiós byte"
 
+# Respuesta rápida grabada al decir solo una frase de activación: viene con frases
+# en chino y además hace que el cerebro siga en chino. Apagada: así contesta Gemini,
+# en español, saludando según la hora y proponiendo algo.
+enable_wakeup_words_response_cache: false
+
 # Frases de activación (la placa despierta con "Byte"; esto le ayuda al servidor a reconocerlas)
 wakeup_words:
   - "oye byte"
