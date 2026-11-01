@@ -60,6 +60,10 @@ for t in 16 32 128 256 512; do
   sips -z $((t * 2)) $((t * 2)) "$DESK/assets/icono.png" --out "$ICONSET/icon_${t}x${t}@2x.png" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/applet.icns"
+# macOS nuevo usa el ícono de Assets.car (CFBundleIconName) antes que applet.icns: lo quitamos.
+rm -f "$APP/Contents/Resources/Assets.car"
+/usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$APP/Contents/Info.plist" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Set :CFBundleIconFile applet" "$APP/Contents/Info.plist" 2>/dev/null || true
 rm -rf "$TMP"
 codesign --force --deep --sign - "$APP" >/dev/null 2>&1 || true
 touch "$APP"
