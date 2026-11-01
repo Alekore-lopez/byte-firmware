@@ -103,6 +103,13 @@ if (Test-Path $electron) {
   Ok "Byte Desk activo en la barra (junto al reloj)."
 }
 
+# Puente del celular (si ya lo instalaste con herramientas\movil\instalar-movil.ps1)
+$vbsMovil = Join-Path $dir "movil\iniciar-puente.vbs"
+if ((Test-Path $vbsMovil) -and -not (Get-NetTCPConnection -LocalPort 8810 -State Listen -ErrorAction SilentlyContinue)) {
+  Start-Process wscript.exe -ArgumentList "`"$vbsMovil`""
+  Ok "Puente del celular encendido."
+}
+
 Write-Host ""
 Write-Host "  ==== Byte encendido. Dile 'Oye Byte' ====" -ForegroundColor White
 Start-Sleep -Seconds 4

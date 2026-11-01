@@ -1,0 +1,17 @@
+{
+  "name": "Byte",
+  "short_name": "Byte",
+  "description": "Tu asistente Byte en el celular: chat, voz y control de la central.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07070b",
+  "theme_color": "#07070b",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

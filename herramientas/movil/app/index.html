@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Byte">
+<title>Byte</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icono-180.png">
+<link rel="icon" href="icono-192.png">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header class="cab">
+  <div class="byte" data-estado="desconectado"><i class="ojo"></i><i class="ojo"></i></div>
+  <div class="cab-texto"><b>Byte</b><span class="estado" id="estado" data-estado="desconectado">sin conexión</span></div>
+</header>
+
+<!-- Sin clave: hay que emparejar -->
+<section class="pantalla" id="s-emparejar" hidden>
+  <div class="vacio">
+    <div class="byte grande" data-estado="desconectado"><i class="ojo"></i><i class="ojo"></i></div>
+    <h2>Empareja este celular</h2>
+    <ol class="pasos">
+      <li>En el HP abre <code>http://127.0.0.1:8811</code>. Ahí sale un código QR.</li>
+      <li>Escanéalo con la <b>Cámara</b> del iPhone y toca el enlace.</li>
+      <li>Ya en Byte: <b>Compartir</b> → <b>Agregar a inicio</b>.</li>
+    </ol>
+    <p class="nota">El código es la llave de Byte. Solo tus equipos con Tailscale pueden llegar hasta aquí.</p>
+  </div>
+</section>
+
+<main id="principal" hidden>
+  <section class="pantalla" id="s-chat">
+    <div class="chat" id="chat" aria-live="polite"></div>
+  </section>
+
+  <section class="pantalla relleno" id="s-estado" hidden>
+    <h2>Estado de Byte</h2>
+    <p class="nota" id="estado-hora">Revisando…</p>
+    <ul class="lista" id="lista-servicios"></ul>
+    <h3>Central</h3>
+    <div class="botones">
+      <button class="btn si" data-orden="encender">Encender</button>
+      <button class="btn" data-orden="reiniciar">Reiniciar</button>
+      <button class="btn peligro" data-orden="apagar">Apagar</button>
+    </div>
+    <p class="nota" id="orden-nota"></p>
+    <h3>Registro de la central</h3>
+    <button class="btn" id="ver-registro">Ver las últimas líneas</button>
+    <pre class="registro" id="registro" hidden></pre>
+  </section>
+
+  <section class="pantalla relleno" id="s-ajustes" hidden>
+    <h2>Ajustes</h2>
+    <div class="aviso" id="instalar" hidden><b>Instálalo como app:</b> toca <b>Compartir</b> (cuadrito con flecha) → <b>Agregar a inicio</b>. Así se abre a pantalla completa, sin Safari.</div>
+    <div class="grupo">
+      <label class="interruptor"><input type="checkbox" id="voz-activa"> Escuchar la voz de Byte en el celular</label>
+      <p class="nota">Si no suena, sube el volumen. Si sigue sin sonar, revisa el interruptor de silencio del iPhone.</p>
+    </div>
+    <div class="grupo">
+      <button class="btn" id="borrar-chat">Borrar el chat de este celular</button>
+      <p class="nota">Lo que Byte recuerda de ti vive en la central, no aquí.</p>
+    </div>
+    <div class="grupo">
+      <button class="btn peligro" id="olvidar">Desemparejar este celular</button>
+      <p class="nota" id="info-dispositivo"></p>
+    </div>
+  </section>
+
+  <div class="zona-entrada" id="zona-entrada">
+    <div class="chips" id="chips">
+      <button class="chip" data-p="Hola Byte">Saludar</button>
+      <button class="chip" data-p="¿Qué clima hace hoy?">Clima</button>
+      <button class="chip" data-p="Cuéntame las noticias de hoy en una frase">Noticias</button>
+      <button class="chip" data-p="¿Qué está sonando en Spotify?">¿Qué suena?</button>
+    </div>
+    <form class="entrada" id="f-chat">
+      <input id="texto" placeholder="Escríbele a Byte…" autocomplete="off" enterkeyhint="send" maxlength="2000" aria-label="Mensaje para Byte">
+      <button class="redondo mic" type="button" id="boton-mic" aria-label="Hablarle"></button>
+      <button class="redondo" type="submit" id="boton-enviar" aria-label="Enviar"></button>
+    </form>
+  </div>
+
+  <nav class="pestanas" aria-label="Secciones">
+    <button data-s="chat" aria-current="page"><span class="ic" data-ic="chat"></span>Chat</button>
+    <button data-s="estado"><span class="ic" data-ic="pulso"></span>Estado</button>
+    <button data-s="ajustes"><span class="ic" data-ic="ajustes"></span>Ajustes</button>
+  </nav>
+</main>
+
+<script src="comun.js"></script>
+<script src="audio.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
