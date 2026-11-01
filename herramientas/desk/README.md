@@ -109,7 +109,24 @@ Comprueban que se conecta, que la pregunta llega, que llegan emoción, frases y 
 - Las claves de Groq, Gemini y ElevenLabs **siguen solo en la central** (`.config.yaml` del HP). Byte Desk nunca las ve.
 - Las fases 3 y 4 (archivos y mensajes) siempre mostrarán **qué va a hacer** y esperarán tu "Sí, hazlo". Solo en Descargas, Documentos y Escritorio, y sin borrar nada.
 
-## Crear el instalador (más adelante)
+## Dejarlo instalado para siempre (sin comandos)
+
+### Windows (HP) — una sola vez
+```powershell
+cd $HOME\byte-firmware\herramientas\desk
+git pull
+npm install
+npm run dist:win
+start dist
+```
+Se abre la carpeta `dist`: doble clic en **Byte-Desk-…-win-x64.exe**. Si Windows muestra "Windows protegió su PC", da clic en **Más información → Ejecutar de todas formas** (sale porque la app no tiene firma de pago).
+
+Queda instalado como cualquier programa: ícono en el escritorio y en el menú Inicio, y **arranca solo al prender el PC** (escondido junto al reloj). Ya no necesitas `npm start`.
+
+### Mac
+Igual, pero con `npm run dist:mac` y abriendo el `.dmg` de `dist`: arrastra Byte Desk a **Aplicaciones**. La primera vez macOS dirá que no puede verificar al desarrollador: ve a **Configuración del Sistema → Privacidad y seguridad → Abrir de todos modos**.
+
+## Crear el instalador (resumen)
 
 - Windows: `npm run dist:win` → `dist/Byte Desk Setup.exe`
 - Mac (en la Mac): `npm run dist:mac` → `dist/Byte Desk.dmg`. Sin cuenta de desarrollador de Apple, la primera vez se abre con **clic derecho → Abrir**.

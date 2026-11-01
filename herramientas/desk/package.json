@@ -11,8 +11,8 @@
     "start": "electron .",
     "test": "node --test \"test/*.test.js\"",
     "central-falsa": "node test/central-falsa.js",
-    "dist:win": "electron-builder --win nsis",
-    "dist:mac": "electron-builder --mac dmg --arm64"
+    "dist:win": "electron-builder --win nsis --publish never",
+    "dist:mac": "electron-builder --mac dmg --arm64 --publish never"
   },
   "dependencies": {
     "ws": "8.18.0"
@@ -24,13 +24,35 @@
   "build": {
     "appId": "co.byte.desk",
     "productName": "Byte Desk",
-    "files": ["src/**", "renderer/**", "assets/**", "package.json"],
+    "files": [
+      "src/**",
+      "renderer/**",
+      "assets/**",
+      "package.json"
+    ],
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "assets/icono.png",
-      "extendInfo": { "LSUIElement": false }
+      "extendInfo": {
+        "LSUIElement": false
+      },
+      "identity": "-"
     },
-    "win": { "icon": "assets/icono.png" },
-    "nsis": { "oneClick": true, "perMachine": false, "shortcutName": "Byte Desk" }
+    "win": {
+      "icon": "assets/icono.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Byte Desk",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    },
+    "artifactName": "Byte-Desk-${version}-${os}-${arch}.${ext}"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alekore-lopez/byte-firmware.git"
   }
 }
