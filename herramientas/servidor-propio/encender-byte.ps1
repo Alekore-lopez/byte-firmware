@@ -45,6 +45,12 @@ Ok "Docker listo."
 
 # 2) Central
 Paso "2/4 Central (oido, cerebro y voz)"
+# Si el cerebro de Byte pasa por OmniRoute (puerto 20128), se enciende primero
+$cfg = Join-Path $dir "data\.config.yaml"
+$omni = Join-Path $HOME "byte-firmware\herramientas\omniroute\encender-omniroute.ps1"
+if ((Test-Path $omni) -and (Test-Path $cfg) -and (Select-String -Path $cfg -Pattern ":20128" -Quiet)) {
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $omni -Silencio
+}
 Push-Location $dir
 cmd /c "docker compose up -d >nul 2>&1"
 Pop-Location
