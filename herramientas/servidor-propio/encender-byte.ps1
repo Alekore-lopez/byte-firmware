@@ -16,6 +16,13 @@ function DockerListo { cmd /c "docker info >nul 2>&1"; return ($LASTEXITCODE -eq
 Write-Host ""
 Write-Host "  ==== Encendiendo a Byte ====" -ForegroundColor White
 
+# Si el cerebro de Byte pasa por OmniRoute (puerto 20128), se enciende antes de la revision
+$cfg = Join-Path $dir "data\.config.yaml"
+$omni = Join-Path $HOME "byte-firmware\herramientas\omniroute\encender-omniroute.ps1"
+if ((Test-Path $omni) -and (Test-Path $cfg) -and (Select-String -Path $cfg -Pattern ":20128" -Quiet)) {
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $omni -Silencio
+}
+
 # 0) Revision previa: si algo grave falla, no arranca y dice como arreglarlo
 $revisar = Join-Path $dir "revisar-byte.ps1"
 if (Test-Path $revisar) {
@@ -45,12 +52,6 @@ Ok "Docker listo."
 
 # 2) Central
 Paso "2/4 Central (oido, cerebro y voz)"
-# Si el cerebro de Byte pasa por OmniRoute (puerto 20128), se enciende primero
-$cfg = Join-Path $dir "data\.config.yaml"
-$omni = Join-Path $HOME "byte-firmware\herramientas\omniroute\encender-omniroute.ps1"
-if ((Test-Path $omni) -and (Test-Path $cfg) -and (Select-String -Path $cfg -Pattern ":20128" -Quiet)) {
-  & powershell -NoProfile -ExecutionPolicy Bypass -File $omni -Silencio
-}
 Push-Location $dir
 cmd /c "docker compose up -d >nul 2>&1"
 Pop-Location
