@@ -94,6 +94,13 @@ if ($llm -eq "GeminiLLM") {
     elseif ($c -in 400, 401, 403) { Grave "Gemini (cerebro): la clave no sirve o fue borrada." "Crea una en aistudio.google.com/apikey y corre cambiar-a-gemini.ps1" }
     else { Aviso "Gemini: no pude comprobar (codigo $c)." "" }
   }
+} elseif ($llm -eq "OmniRouteLLM") {
+  $bloque = [regex]::Match($texto, "(?ms)^  OmniRouteLLM:.*?(?=^  \S|^\S|\z)").Value
+  $okey = [regex]::Match($bloque, "api_key:\s*`"?([^`"\s]+)").Groups[1].Value
+  $c = Http "http://127.0.0.1:20128/v1/models" @{ Authorization = "Bearer $okey" }
+  if ($c -eq 200) { Bien "OmniRoute (cerebro): encendido y la clave sirve." }
+  elseif ($c -eq 0) { Grave "OmniRoute (cerebro) esta apagado." "Doble clic en el icono OmniRoute del escritorio." }
+  else { Grave "OmniRoute (cerebro): respondio codigo $c." "Revisa la clave en el panel (Gestor de API)." }
 } elseif ($llm) { Bien "Cerebro: $llm (no se revisa la clave)." }
 
 $tts = [regex]::Match($texto, "(?m)^[ \t]+TTS:[ \t]*(\S+)").Groups[1].Value
